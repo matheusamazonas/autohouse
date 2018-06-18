@@ -1,0 +1,3 @@
+[submodule "mTask"]
+	path = mTask
+	url = https://gitlab.science.ru.nl/mlubbers/mTask.git
