@@ -1,0 +1,6 @@
+Clean System Files
+
+*-data
+*-www
+*-sapl
+*.prj
