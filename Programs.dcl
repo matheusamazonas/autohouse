@@ -1,1 +1,1 @@
-definition module AutoHouse.Programs
+definition module Programs
