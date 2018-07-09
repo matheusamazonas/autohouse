@@ -1,6 +1,7 @@
 implementation module Programs
 
 import StdInt, StdBool, StdTuple
+import Data.Func
 
 import iTasks
 
@@ -31,8 +32,8 @@ fillThermostat = (updateInformation "Target Temperature" [] (Temp 21)
 	-&&- updateInformation "AC Pin" [] D1)
 	>>= \(target,(tp,(hp,ac))) -> return (thermostat target tp hp ac)
 
-faculty :: (Shared Int) Int DigitalPin -> Main (ByteCode () Stmt)
-faculty sh i p = vari \y=i In sds \x=sh In {main =
+factorial :: (Shared Int) Int DigitalPin -> Main (ByteCode () Stmt)
+factorial sh i p = vari \y=i In sds \x=sh In {main =
 	IF (y <=. lit 1) (
 		digitalWrite p (lit True) :.
 		pub x :. 
@@ -42,4 +43,9 @@ faculty sh i p = vari \y=i In sds \x=sh In {main =
 		x =. x *. y :.
 		y =. y -. lit 1
 	)}
+
+fillFactorial :: (Shared Int) -> Task (Main (ByteCode () Stmt))
+fillFactorial result = (updateInformation "Faculty of what" [] 4
+	-&&- updateInformation "LED to light up" [] D13)
+	>>= \(x,p) -> return $ factorial result x p
 
