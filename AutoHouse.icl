@@ -126,12 +126,13 @@ where
 			} Automatic 1000.0
 
 editUnit :: (Shared Room) Unit -> Task ()
-editUnit rsh u=:(Unit i _ (Device dsh _)) = forever $ watch dsh >>* [OnValue (hasValue showInfo)]
+editUnit rsh u=:(Unit i _ (Device dsh _)) = forever $ get dsh >>* [OnValue (hasValue showInfo)]
 where
 	showInfo :: DeviceData -> Task ()
 	showInfo dd = updateSharedInformation title [UpdateAs getName putName] (sdsFocus u (unitSh rsh))
-		||- viewDevShares dd.deviceShares
-		||- viewDevTasks dd.deviceTasks 
+		||- (viewDevShares dd.deviceShares
+		||- viewDevTasks dd.deviceTasks <<@ ArrangeHorizontal
+				>>* [OnAction ActionRefresh (always (return ()))])
 	where
 		title = Title $ "Edit unit #" +++ toString i
 		getName :: Unit -> String
@@ -150,8 +151,10 @@ where
 		where
 			viewDevShare :: Int (Bool, SDS Bool BCValue BCValue) -> Task ()
 			viewDevShare k (ack, sds) = viewInformation "SDS id" [] k
-				||- viewInformation "Acked?" [] ack @! ()
-				// ||- viewSharedInformation "SDS Value" [] (sdsFocus True sds) @! ()
+				||- viewInformation "Acked?" [] ack
+				||- try 
+					(viewSharedInformation "SDS Value" [] (sdsFocus True sds) @! ())
+					(\e -> viewInformation ("SDS doesnt exist anymore. " +++ e) [] ())
 
 // ----------- Main -----------
 
