@@ -48,4 +48,3 @@ fillFactorial :: (Shared Int) -> Task (Main (ByteCode () Stmt))
 fillFactorial result = (updateInformation "Faculty of what" [] 4
 	-&&- updateInformation "LED to light up" [] D13)
 	>>= \(x,p) -> return $ factorial result x p
-

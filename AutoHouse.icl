@@ -1,8 +1,9 @@
 implementation module AutoHouse
 
-import StdMisc
+import StdMisc, StdArray
 import Data.Func
 import Data.List
+import qualified Data.Map as DM
 
 import iTasks
 import iTasks.Internal.Store
@@ -14,53 +15,50 @@ import Programs
 
 import StdDebug, StdMisc
 
-derive class iTask Room,Unit, TTYSettings, BaudRate, Parity, ByteSize
+derive class iTask Room,Unit, TTYSettings, BaudRate, Parity, ByteSize, DeviceData, BCState
 
 instance == Room where
 	(==) (Room i1 _ _) (Room i2 _ _) = i1 == i2
 
+instance == Unit where
+	(==) (Unit i1 n1 _) (Unit i2 n2 _) = i1 == i2 && n1 == n2
+
 instance toString Room where
 	toString (Room i n _) = n +++ " (" +++ toString i +++ ")"
+
+instance toString Unit where
+	toString (Unit i n _) = n +++ " (" +++ toString i +++ ")"
+
+// ----------- House -----------
 
 house :: Shared House
 house = sdsFocus "AutoHouse" $ memoryStore "house" (Just [Room 0 "Living room" []])
 
-room :: SDS Room Room Room
-room = sdsLens "house" (const ()) (SDSRead r) (SDSWrite w) (SDSNotify n) house
+manageHouse :: (Shared House) -> Task ()
+manageHouse sh = forever $ enterChoiceWithShared "Rooms" [ChooseFromCheckGroup \(Room _ n _) -> n] sh
+	>>* [OnAction ActionEdit (hasValue editRoom),
+	     OnAction ActionNew (always newRoom)]
+
+// ----------- Room -----------
+
+roomSh :: SDS Room Room Room
+roomSh = sdsLens "house" (const ()) (SDSRead r) (SDSWrite w) (SDSNotify n) house
 where
 	r :: Room [Room] -> MaybeError TaskException Room
 	r p rs = case find ((==) p) rs of
 		Just r = Ok r
-		Nothing = Error (exception ("Can't find " +++ toString p +++ toString (length rs)))
+		Nothing = Error $ exception ("Can't find " +++ toString p)
 	w :: Room [Room] Room -> MaybeError TaskException (Maybe [Room])
 	w p rs nr = case find ((==) p) rs of
-		Nothing = Ok (Just [nr:rs])
+		Nothing = Ok $ Just [nr:rs]
 		Just _ = Ok $ Just $ replaceInList (==) nr rs
 	n :: Room [Room] Room -> SDSNotifyPred Room
 	n p1 _ _ = \_ p2 -> p1 == p2
 
-main :: Task Room
-main = manageHouse house
-
-manageHouse :: (Shared House) -> Task Room
-manageHouse sh = forever $ enterChoiceWithShared "Rooms" [ChooseFromCheckGroup \(Room _ n _) -> n] sh
-	>>* [OnAction ActionEdit (hasValue manageRoom),
-	     OnAction ActionNew (always newRoom)]
-
-manageRoom :: Room -> Task Room
-manageRoom r=:(Room _ n ds) = enterChoice (Title n) [] ds
-	>>* [OnAction (Action "New device") (always (newDevice (sdsFocus r room))),
-	     OnAction (Action "Send task") (hasValue sendTask)]
-where
-	sendTask (Unit _ _ d) = enterInformation "Select interval" [] 
-		>>= \i -> withShared 1 \sh -> fillFactorial sh
-		>>= \fac -> liftmTask d i fac
-		>>= \_ -> return r
-
-newRoom :: Task Room
+newRoom :: Task ()
 newRoom = enterInformation "Room name" [] 
 	>>= \name -> findFreeId
-	>>= \i -> upd (\rs -> [(Room i name []):rs]) house @! (Room i name [])
+	>>= \i -> upd (\rs -> [(Room i name []):rs]) house @! (Room i name []) @! ()
 where
 	findFreeId :: Task Int
 	findFreeId = get house 
@@ -68,11 +66,37 @@ where
 			[] = return 0
 			_  = return $ inc $ (\(Room i _ _) -> i) (last rs)
 
-newDevice :: (Shared Room) -> Task Room
-newDevice sh = enterInformation "Device name" []
-	>>= \name -> enterChoiceAs "Choose the device type" [] dTypes fst
+editRoom :: Room -> Task ()
+editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromDropdown \(Unit _ n _) -> n] ds
+	>>* [OnAction (Action "New device") (always (newUnit (sdsFocus r roomSh))),
+	     OnAction (Action "Send task") (hasValue sendTask),
+	     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
+where
+	sendTask (Unit _ _ d) = enterInformation "Select interval" [] 
+		>>= \i -> withShared 1 \sh -> fillFactorial sh
+		>>= \fac -> liftmTask d i fac @! ()
+
+// ----------- Unit -----------
+
+unitSh :: (Shared Room) -> SDS Unit Unit Unit
+unitSh roomSh = sdsLens "room" (const ()) (SDSRead r) (SDSWrite w) (SDSNotify n) roomSh
+where
+	r :: Unit Room -> MaybeError TaskException Unit
+	r u (Room _ _ us) = case find ((==) u) us of
+		Just u = Ok u
+		Nothing = Error (exception ("Can't find unit " +++ toString u))
+	w :: Unit Room Unit -> MaybeError TaskException (Maybe Room)
+	w p (Room i n us) u = case find ((==) p) us of
+		Nothing = Ok $ Just (Room i n [u:us])
+		Just _ = Ok $ Just $ (Room i n (replaceInList (==) u us))
+	n :: Unit Room Unit -> SDSNotifyPred Unit
+	n p1 _ _ = \_ p2 -> p1 == p2
+
+newUnit :: (Shared Room) -> Task ()
+newUnit sh = enterInformation "Device name" []
+	>>= \name -> enterChoiceAs "Choose the device type" [ChooseFromDropdown snd] dTypes fst
 	>>= \ix -> (forms !! ix)
-	>>= \wd -> wd (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 name d:ds]) sh) <<@ NoUserInterface
+	>>= \wd -> wd (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 name d:ds]) sh @! ()) <<@ NoUserInterface
 where
 	dTypes :: [(Int, String)]
 	dTypes = [(0, "Simulator"),
@@ -100,6 +124,39 @@ where
 			, bytesMemory   = 1024
 			, resolveLabels = False
 			} Automatic 1000.0
+
+editUnit :: (Shared Room) Unit -> Task ()
+editUnit rsh u=:(Unit i _ (Device dsh _)) = forever $ watch dsh >>* [OnValue (hasValue showInfo)]
+where
+	showInfo :: DeviceData -> Task ()
+	showInfo dd = updateSharedInformation title [UpdateAs getName putName] (sdsFocus u (unitSh rsh))
+		||- viewDevShares dd.deviceShares
+		||- viewDevTasks dd.deviceTasks 
+	where
+		title = Title $ "Edit unit #" +++ toString i
+		getName :: Unit -> String
+		getName (Unit _ n _) = n
+		putName :: Unit String -> Unit
+		putName (Unit i _ us) n = Unit i n us
+		viewDevTasks :: ('DM'.Map Int Bool) -> Task ()
+		viewDevTasks tm = viewInformation "Device Tasks "[] ()
+			-|| (allTasks $ 'DM'.elems $ 'DM'.mapWithKey viewDevTask tm)
+		where
+			viewDevTask :: Int Bool -> Task ()
+			viewDevTask i b = viewInformation ("Task " +++ toString i) [] b @! ()
+		viewDevShares :: ('DM'.Map Int (Bool, SDS Bool BCValue BCValue)) -> Task ()
+		viewDevShares sm = viewInformation "Device Shares" [] ()
+			-|| (allTasks $ 'DM'.elems $ 'DM'.mapWithKey viewDevShare sm) 
+		where
+			viewDevShare :: Int (Bool, SDS Bool BCValue BCValue) -> Task ()
+			viewDevShare k (ack, sds) = viewInformation "SDS id" [] k
+				||- viewInformation "Acked?" [] ack @! ()
+				// ||- viewSharedInformation "SDS Value" [] (sdsFocus True sds) @! ()
+
+// ----------- Main -----------
+
+main :: Task ()
+main = manageHouse house
 
 Start world = startEngine
 		[ publish "/" $ const $ main
