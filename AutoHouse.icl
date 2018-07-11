@@ -3,6 +3,7 @@ implementation module AutoHouse
 import StdMisc, StdArray
 import Data.Func
 import Data.List
+from System.Time import :: Timespec {..}
 import qualified Data.Map as DM
 
 import iTasks
@@ -161,7 +162,8 @@ where
 main :: Task ()
 main = manageHouse house
 
-Start world = startEngine
+Start world = startEngineWithOptions 
+		(\cli options.defaultEngineCLIOptions cli {options & sessionTime = {tv_sec = 1000000000, tv_nsec=0}})
 		[ publish "/" $ const $ main
 		, publish "/simulators" $ const $ viewSims
 		] world
