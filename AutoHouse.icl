@@ -1,8 +1,7 @@
 implementation module AutoHouse
 
 import StdMisc, StdArray
-import Data.Func
-import Data.List
+import Data.Func, Data.List, Data.Maybe
 from System.Time import :: Timespec {..}
 import qualified Data.Map as DM
 
@@ -10,6 +9,7 @@ import iTasks
 import iTasks.Internal.Store
 
 import Interpret
+import Specification
 import Interpret.Device
 import TTY
 import Programs
@@ -73,9 +73,11 @@ editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromDropdown \(Unit _ n
 	     OnAction (Action "Send task") (hasValue sendTask),
 	     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
 where
-	sendTask (Unit _ _ d) = enterInformation "Select interval" [] 
-		>>= \i -> withShared 1 \sh -> fillFactorial sh
-		>>= \fac -> liftmTask d i fac @! ()
+	sendTask :: Unit -> Task ()
+	sendTask (Unit _ _ d=:(Device ddsh _)) = get ddsh
+		>>= \dd -> enterChoice "Choose Task" [ChooseFromList snd] (programsBySpec dd.deviceSpec)
+		>>= \(x,_) -> enterInformation "Select interval" [] 
+		>>= \i -> (programTasks !! x) d i
 
 // ----------- Unit -----------
 

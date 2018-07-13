@@ -2,6 +2,8 @@ definition module Programs
 
 import iTasks
 import Interpret
+import Specification
+from Peripheral.LED import class userLed
 
-fillThermostat :: Task (Main (ByteCode () Stmt))
-fillFactorial :: (Shared Int) -> Task (Main (ByteCode () Stmt))
+programsBySpec :: (Maybe MTaskDeviceSpec) -> [(Int,String)]
+programTasks :: [MTaskDevice MTaskInterval -> Task ()]

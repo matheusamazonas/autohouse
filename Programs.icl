@@ -1,6 +1,6 @@
 implementation module Programs
 
-import StdInt, StdBool, StdTuple
+import StdInt, StdBool, StdTuple, StdMisc
 import Data.Func
 
 import iTasks
@@ -8,10 +8,13 @@ import iTasks
 import Language
 import Code     //!?!?!?!?
 import Interpret
+import Specification
 import Peripheral.Pin
 import Peripheral.Temperature
 
-thermostat :: Temperature AnalogPin DigitalPin DigitalPin -> Main (ByteCode () Stmt)
+class program v | arith, IF, seq, boolExpr, noOp, vari, IF, digitalIO, analogIO, temperature, sdspub, iTasksSds, assign, retrn v
+
+thermostat :: Temperature AnalogPin DigitalPin DigitalPin -> Main (v () Stmt) | program v
 thermostat target tp hp ap = vari \t=(Temp 0) In { main =
 	setTempPin tp :.
 	t =. getTemp :.
@@ -25,17 +28,9 @@ thermostat target tp hp ap = vari \t=(Temp 0) In { main =
 		)
 	}
 
-fillThermostat :: Task (Main (ByteCode () Stmt))
-fillThermostat = (updateInformation "Target Temperature" [] (Temp 21)
-	-&&- updateInformation "Temperature Pin" [] A0
-	-&&- updateInformation "Heater Pin" [] D0
-	-&&- updateInformation "AC Pin" [] D1)
-	>>= \(target,(tp,(hp,ac))) -> return (thermostat target tp hp ac)
-
-factorial :: (Shared Int) Int DigitalPin -> Main (ByteCode () Stmt)
+factorial :: (Shared Int) Int DigitalPin -> Main (v () Stmt) | program v
 factorial sh i p = vari \y=i In sds \x=sh In {main =
 	IF (y <=. lit 1) (
-		digitalWrite p (lit True) :.
 		pub x :. 
 		digitalWrite p (lit True) :.
 		retrn
@@ -44,7 +39,17 @@ factorial sh i p = vari \y=i In sds \x=sh In {main =
 		y =. y -. lit 1
 	)}
 
-fillFactorial :: (Shared Int) -> Task (Main (ByteCode () Stmt))
-fillFactorial result = (updateInformation "Faculty of what" [] 4
+sendFactorial :: MTaskDevice MTaskInterval -> Task ()
+sendFactorial dev i = withShared 1 \result -> (updateInformation "Faculty of what" [] 4
 	-&&- updateInformation "LED to light up" [] D13)
-	>>= \(x,p) -> return $ factorial result x p
+	>>= \(x,p) -> liftmTask dev i (factorial result x p) @! ()
+
+programsBySpec :: (Maybe MTaskDeviceSpec) -> [(Int,String)]
+programsBySpec Nothing = abort "Device doesnt have a specification"
+programsBySpec (Just spec) = map (\(a,b,_) -> (a,b)) $ filter ((checkSpec spec) o thd3) programs
+where
+	programs :: [(Int,String,Main (Specification () Stmt))]
+	programs = [(0,"Factorial",factorial undef undef undef)]
+
+programTasks :: [MTaskDevice MTaskInterval -> Task ()]
+programTasks = [sendFactorial]
