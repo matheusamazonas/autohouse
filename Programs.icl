@@ -6,7 +6,7 @@ import Data.Func
 import iTasks
 
 import Language
-import Code     //!?!?!?!?
+import Code
 import Interpret
 import Specification
 import Peripheral.LED
@@ -15,16 +15,15 @@ import Peripheral.Temperature
 
 class program v | arith, IF, seq, boolExpr, noOp, vari, IF, digitalIO, analogIO, temperature, sdspub, iTasksSds, assign, retrn, userLed v
 
-thermostat :: Temperature AnalogPin DigitalPin DigitalPin -> Main (v () Stmt) | program v
-thermostat target tp hp ap = vari \t=(Temp 0) In { main =
-	setTempPin tp :.
+thermostat :: Temperature -> Main (v () Stmt) | program v
+thermostat target = vari \t=(Temp 0) In { main =
 	t =. getTemp :.
 	IF (t <. lit target)
-		(digitalWrite hp (lit True) :.
-		 digitalWrite ap (lit False))
+		(digitalWrite D0 (lit True) :.
+		 digitalWrite D1 (lit False))
 		(IF (t >. lit target)
-			(digitalWrite hp (lit False) :.
-			 digitalWrite ap (lit True))
+			(digitalWrite D0 (lit False) :.
+			 digitalWrite D1 (lit True))
 			noOp
 		)
 	}
@@ -59,6 +58,18 @@ curtains sh = sds \alarm=sh In { main =
 		digitalWrite D0 (lit False)
 	)}
 
+movSwitch :: Main (v () Stmt) | program v
+movSwitch = { main = 
+	IF (analogRead A0 >. lit 2) (
+		digitalWrite D0 (lit True)
+	) ( 
+		digitalWrite D0 (lit False)
+	)}
+
+sendThermostat :: MTaskDevice MTaskInterval -> Task ()
+sendThermostat dev i = updateInformation "Target temperature" [] (Temp 21)
+	>>= \temp -> liftmTask dev i (thermostat temp)
+
 sendFactorial :: MTaskDevice MTaskInterval -> Task ()
 sendFactorial dev i = withShared 1 \result -> (updateInformation "Faculty of what" [] 4
 	-&&- updateInformation "LED to light up" [] D13)
@@ -70,14 +81,20 @@ sendSwitch dev i = liftmTask dev i switch
 sendCurtains :: MTaskDevice MTaskInterval -> Task ()
 sendCurtains dev i = withShared False \result -> liftmTask dev i (curtains result)
 
+sendMovSwitch :: MTaskDevice MTaskInterval -> Task ()
+sendMovSwitch dev i = liftmTask dev i movSwitch
+
 programsBySpec :: (Maybe MTaskDeviceSpec) -> [(Int,String)]
 programsBySpec Nothing = abort "Device doesnt have a specification"
 programsBySpec (Just spec) = map (\(a,b,_) -> (a,b)) $ filter ((checkSpec spec) o thd3) programs
 where
 	programs :: [(Int,String,Main (Specification () Stmt))]
-	programs = [(0,"Factorial",factorial undef undef undef),
-	            (1, "Switch", switch),
-	            (2, "Curtains", curtains undef)]
+	programs = [(0, "Thermostat", thermostat undef),
+	            (1, "Factorial",factorial undef undef undef),
+	            (2, "Switch", switch),
+	            (3, "Curtains", curtains undef),
+	            (4, "Movement switch", movSwitch)]
 
 programTasks :: [MTaskDevice MTaskInterval -> Task ()]
-programTasks = [sendFactorial, sendSwitch, sendCurtains]
+programTasks = [sendThermostat, sendFactorial, sendSwitch, sendCurtains, sendMovSwitch]
+
