@@ -13,17 +13,17 @@ import Peripheral.LED
 import Peripheral.Pin
 import Peripheral.Temperature
 
-class program v | arith, IF, seq, boolExpr, noOp, vari, IF, digitalIO, analogIO, temperature, sdspub, iTasksSds, assign, retrn, userLed v
+class program v | arith, IF, seq, boolExpr, noOp, vari, IF, dIO, aIO, temperature, sdspub, iTasksSds, assign, retrn, userLed v
 
 thermostat :: Temperature -> Main (v () Stmt) | program v
 thermostat target = vari \t=(Temp 0) In { main =
 	t =. getTemp :.
 	IF (t <. lit target)
-		(digitalWrite D0 (lit True) :.
-		 digitalWrite D1 (lit False))
+		(dIO D0 =. (lit True) :.
+		 dIO D1 =. (lit False))
 		(IF (t >. lit target)
-			(digitalWrite D0 (lit False) :.
-			 digitalWrite D1 (lit True))
+			(dIO D0 =. (lit False) :.
+			 dIO D1 =. (lit True))
 			noOp
 		)
 	}
@@ -32,7 +32,7 @@ factorial :: (Shared Int) Int DigitalPin -> Main (v () Stmt) | program v
 factorial sh i p = vari \y=i In sds \x=sh In {main =
 	IF (y <=. lit 1) (
 		pub x :. 
-		digitalWrite p (lit True) :.
+		dIO p =. (lit True) :.
 		retrn
 	) (
 		x =. x *. y :.
@@ -41,7 +41,7 @@ factorial sh i p = vari \y=i In sds \x=sh In {main =
 
 switch :: Main (v () Stmt) | program v
 switch = { main = 
-	IF (digitalRead D0) (
+	IF (dIO D0) (
 		ledOn (lit LED1)
 	) (
 		ledOff (lit LED1)
@@ -49,21 +49,21 @@ switch = { main =
 
 curtains :: (Shared Bool) -> Main (v () Stmt) | program v
 curtains sh = sds \alarm=sh In { main = 
-	IF (analogRead A0 >. lit 3) (
-		digitalWrite D0 (lit True) :.
+	IF (aIO A0 >. lit 3) (
+		dIO D0 =. (lit True) :.
 		alarm =. lit True :.
 		pub alarm :.
 		retrn
 	) (
-		digitalWrite D0 (lit False)
+		dIO D0 =. (lit False)
 	)}
 
 movSwitch :: Main (v () Stmt) | program v
 movSwitch = { main = 
-	IF (analogRead A0 >. lit 2) (
-		digitalWrite D0 (lit True)
+	IF (aIO A0 >. lit 2) (
+		dIO D0 =. (lit True)
 	) ( 
-		digitalWrite D0 (lit False)
+		dIO D0 =. (lit False)
 	)}
 
 sendThermostat :: MTaskDevice MTaskInterval -> Task ()
