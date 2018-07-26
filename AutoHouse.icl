@@ -121,6 +121,8 @@ where
 			, haveLCD       = False
 			, haveHb        = False
 			, haveTemp      = True
+			, haveHumidity  = True
+			, haveUltra     = True
 			, aPins         = 1
 			, dPins         = 14
 			, stackSize     = 64

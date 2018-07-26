@@ -11,12 +11,13 @@ import Interpret
 import Specification
 import Peripheral.LED
 import Peripheral.Pin
-import Peripheral.Temperature
+import Peripheral.DHT22
+import Peripheral.HCSR04
 
-class program v | arith, IF, seq, boolExpr, noOp, vari, IF, dIO, aIO, temperature, sdspub, iTasksSds, assign, retrn, userLed v
+class program v | arith, IF, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04, sdspub, iTasksSds, assign, retrn, userLed v
 
 thermostat :: Temperature -> Main (v () Stmt) | program v
-thermostat target = vari \t=(Temp 0) In { main =
+thermostat target = vari \t=(Temp 0.0) In { main =
 	t =. getTemp :.
 	IF (t <. lit target)
 		(dIO D0 =. (lit True) :.
@@ -66,8 +67,26 @@ movSwitch = { main =
 		dIO D0 =. (lit False)
 	)}
 
+shareTemp :: (Shared Temperature) -> Main (v () Stmt) | program v
+shareTemp sh = sds \t=sh In { main =
+	t =. getTemp :.
+	pub t :. noOp
+	}
+
+shareHumid :: (Shared Humidity) -> Main (v () Stmt) | program v
+shareHumid sh = sds \h=sh In { main = 
+	h =. getHumid :.
+	pub h :. noOp
+	}
+
+shareDistance :: (Shared Distance) -> Main (v () Stmt) | program v
+shareDistance sh = sds \d=sh In { main =
+	d =. getDistance :.
+	pub d :. noOp
+	}
+
 sendThermostat :: MTaskDevice MTaskInterval -> Task ()
-sendThermostat dev i = updateInformation "Target temperature" [] (Temp 21)
+sendThermostat dev i = updateInformation "Target temperature" [] (Temp 21.0)
 	>>= \temp -> liftmTask dev i (thermostat temp)
 
 sendFactorial :: MTaskDevice MTaskInterval -> Task ()
@@ -84,6 +103,15 @@ sendCurtains dev i = withShared False \result -> liftmTask dev i (curtains resul
 sendMovSwitch :: MTaskDevice MTaskInterval -> Task ()
 sendMovSwitch dev i = liftmTask dev i movSwitch
 
+sendShareTemp :: MTaskDevice MTaskInterval -> Task ()
+sendShareTemp dev i = withShared (Temp 21.0) \tsh -> liftmTask dev i (shareTemp tsh)
+
+sendShareHumi :: MTaskDevice MTaskInterval -> Task ()
+sendShareHumi dev i = withShared (Hum 51.42) \hsh -> liftmTask dev i (shareHumid hsh)
+
+sendShareDist :: MTaskDevice MTaskInterval -> Task ()
+sendShareDist dev i = withShared 42 \dsh -> liftmTask dev i (shareDistance dsh)
+
 programsBySpec :: (Maybe MTaskDeviceSpec) -> [(Int,String)]
 programsBySpec Nothing = abort "Device doesnt have a specification"
 programsBySpec (Just spec) = map (\(a,b,_) -> (a,b)) $ filter ((checkSpec spec) o thd3) programs
@@ -93,8 +121,20 @@ where
 	            (1, "Factorial",factorial undef undef undef),
 	            (2, "Switch", switch),
 	            (3, "Curtains", curtains undef),
-	            (4, "Movement switch", movSwitch)]
+	            (4, "Movement switch", movSwitch),
+	            (5, "Share temperature", shareTemp undef),
+	            (6, "Share humidity", shareHumid undef),
+	            (7, "Share distance", shareDistance undef) ]
 
 programTasks :: [MTaskDevice MTaskInterval -> Task ()]
-programTasks = [sendThermostat, sendFactorial, sendSwitch, sendCurtains, sendMovSwitch]
+programTasks = [
+	sendThermostat, 
+	sendFactorial, 
+	sendSwitch, 
+	sendCurtains, 
+	sendMovSwitch, 
+	sendShareTemp, 
+	sendShareHumi,
+	sendShareDist
+	]
 
