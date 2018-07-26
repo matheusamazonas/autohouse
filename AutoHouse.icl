@@ -89,11 +89,11 @@ where
 
 // ----------- Unit -----------
 
-allUnits :: SDS () [(Shared Room, Unit)] [Room]
+allUnits :: SDS () [Unit] [Room]
 allUnits = mapRead (concat o (map getUnits)) house
 where
-	getUnits :: Room -> [(Shared Room, Unit)]
-	getUnits r=:(Room _ _ us) = map (\u -> (sdsFocus r roomSh, u)) us
+	getUnits :: Room -> [Unit]
+	getUnits r=:(Room _ _ us) = us
 
 unitSh :: (Shared Room) -> SDS Unit Unit Unit
 unitSh roomSh = sdsLens "room" (const ()) (SDSRead r) (SDSWrite w) (SDSNotify n) roomSh
@@ -145,19 +145,26 @@ where
 			} Automatic 1000.0
 
 editUnit :: (Shared Room) Unit -> Task ()
-editUnit rsh u=:(Unit i _ (Device dsh _)) = forever $ get dsh >>* [OnValue (hasValue showInfo)]
+editUnit rsh u=:(Unit i _ (Device dsh _)) = forever $ get dsh >>* [OnValue (hasValue editInfo)]
 where
-	showInfo :: DeviceData -> Task ()
-	showInfo dd = updateSharedInformation title [UpdateAs getName putName] (sdsFocus u (unitSh rsh))
-		||- (viewDevShares dd.deviceShares
-		||- viewDevTasks dd.deviceTasks <<@ ArrangeHorizontal
-				>>* [OnAction ActionRefresh (always (return ()))])
+	editInfo :: DeviceData -> Task ()
+	editInfo dd = updateSharedInformation title [UpdateAs getName putName] (sdsFocus u (unitSh rsh)) @! ()
 	where
 		title = Title $ "Edit unit #" +++ toString i
 		getName :: Unit -> String
 		getName (Unit _ n _) = n
 		putName :: Unit String -> Unit
 		putName (Unit i _ us) n = Unit i n us
+
+viewUnit :: Unit -> Task ()
+viewUnit u=:(Unit i _ (Device dsh _)) = forever $ get dsh >>* [OnValue (hasValue showInfo)]
+where
+	showInfo :: DeviceData -> Task ()
+	showInfo dd = viewDevShares dd.deviceShares
+		||- viewDevTasks dd.deviceTasks <<@ ArrangeHorizontal
+				>>* [OnAction ActionRefresh (always (return ()))]
+	where
+		
 		viewDevTasks :: ('DM'.Map Int Bool) -> Task ()
 		viewDevTasks tm = viewInformation "Device Tasks "[] ()
 			-|| (allTasks $ 'DM'.elems $ 'DM'.mapWithKey viewDevTask tm)
@@ -176,8 +183,8 @@ where
 					(\e -> viewInformation ("SDS doesnt exist anymore. " +++ e) [] ())
 
 manageUnits :: Task ()
-manageUnits = enterChoiceWithShared "Choose a unit" [ChooseFromList \(_, Unit i n _) -> n] allUnits
-	>>= uncurry editUnit
+manageUnits = enterChoiceWithShared "Choose a unit" [ChooseFromList \(Unit i n _) -> n] allUnits
+	>>= viewUnit
 
 getSpec :: Unit -> Task (Maybe MTaskDeviceSpec)
 getSpec (Unit _ _ (Device ddsh _)) = get ddsh >>= \dd -> return dd.deviceSpec
@@ -198,7 +205,7 @@ where
 	unitName (Unit _ n _) = n
 	compUnits :: (Main (Requirements () Stmt)) -> Task [Unit]
 	compUnits r = get allUnits
-		>>= \us -> allTasks (map (compatible r) (map snd us))
+		>>= \us -> allTasks (map (compatible r) us)
 		>>= \up -> return $ map fst $ filter snd up
 	where
 		compatible :: (Main (Requirements () Stmt)) Unit -> Task (Unit, Bool)
