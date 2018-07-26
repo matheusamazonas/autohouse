@@ -3,13 +3,14 @@ module AutoHouse
 import StdMisc, StdArray
 import Data.Func, Data.List, Data.Maybe
 from System.Time import :: Timespec {..}
+from Data.Foldable import class Foldable, concat
 import qualified Data.Map as DM
 
 import iTasks
 import iTasks.Internal.Store
+import iTasks.Extensions.Admin.WorkflowAdmin
 
 import Interpret
-import Compatibility
 import Requirements
 import Interpret.Device
 import TTY
@@ -75,18 +76,24 @@ where
 			_  = return $ inc $ (\(Room i _ _) -> i) (last rs)
 
 editRoom :: Room -> Task ()
-editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromDropdown \(Unit _ n _) -> n] ds
+editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) -> n] ds
 	>>* [OnAction (Action "New device") (always (newUnit (sdsFocus r roomSh))),
 	     OnAction (Action "Send task") (hasValue sendTask),
 	     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
 where
 	sendTask :: Unit -> Task ()
-	sendTask (Unit _ _ d=:(Device ddsh _)) = get ddsh
-		>>= \dd -> enterChoice "Choose Task" [ChooseFromList snd] (programsBySpec dd.deviceSpec)
-		>>= \(x,_) -> enterInformation "Select interval" [] 
-		>>= \i -> (programTasks !! x) d i
+	sendTask u=:(Unit _ _ d) = getSpec u
+		>>= \ds -> enterChoice "Choose Task" [ChooseFromList fst] (programsBySpec ds)
+		>>= \(_,pt) -> chooseInterval
+		>>= \i -> pt d i
 
 // ----------- Unit -----------
+
+allUnits :: SDS () [(Shared Room, Unit)] [Room]
+allUnits = mapRead (concat o (map getUnits)) house
+where
+	getUnits :: Room -> [(Shared Room, Unit)]
+	getUnits r=:(Room _ _ us) = map (\u -> (sdsFocus r roomSh, u)) us
 
 unitSh :: (Shared Room) -> SDS Unit Unit Unit
 unitSh roomSh = sdsLens "room" (const ()) (SDSRead r) (SDSWrite w) (SDSNotify n) roomSh
@@ -168,10 +175,45 @@ where
 					(viewSharedInformation "SDS Value" [] (sdsFocus True sds) @! ())
 					(\e -> viewInformation ("SDS doesnt exist anymore. " +++ e) [] ())
 
+manageUnits :: Task ()
+manageUnits = enterChoiceWithShared "Choose a unit" [ChooseFromList \(_, Unit i n _) -> n] allUnits
+	>>= uncurry editUnit
+
+getSpec :: Unit -> Task (Maybe MTaskDeviceSpec)
+getSpec (Unit _ _ (Device ddsh _)) = get ddsh >>= \dd -> return dd.deviceSpec
+
+// ----------- Task -----------
+
+chooseInterval :: Task MTaskInterval
+chooseInterval = updateInformation "Choose Interval" [] (OnInterval 1000)
+
+newTask :: Task ()
+newTask = enterChoice "Choose Task" [ChooseFromList snd] programIndex
+	>>= \(ix,n) -> chooseInterval
+	>>= \i -> compUnits (programs !! ix).req
+	>>= \us -> enterChoice "Choose unit" [ChooseFromList unitName] us
+	>>= \(Unit _ _ d) -> (programs !! ix).send d i
+where
+	unitName :: Unit -> String
+	unitName (Unit _ n _) = n
+	compUnits :: (Main (Requirements () Stmt)) -> Task [Unit]
+	compUnits r = get allUnits
+		>>= \us -> allTasks (map (compatible r) (map snd us))
+		>>= \up -> return $ map fst $ filter snd up
+	where
+		compatible :: (Main (Requirements () Stmt)) Unit -> Task (Unit, Bool)
+		compatible r u=:(Unit _ _ (Device ddsh _)) = get ddsh
+			>>= \dd -> return (u, match r dd.deviceSpec)
+
 // ----------- Main -----------
 
 main :: Task ()
-main = manageHouse house
+main = loginAndManageWorkList "Autohouse" workflows
+where
+	workflows = [transientWorkflow "Manage house" "Create, delete and edit rooms" (manageHouse house),
+	             transientWorkflow "Manage unit" "Create, delete and edit unit" manageUnits,
+	             transientWorkflow "New task" "Send a task to a unit" newTask
+	             ]
 
 Start world = startEngineWithOptions 
 		(\cli options.defaultEngineCLIOptions cli {options & sessionTime = {tv_sec = 1000000000, tv_nsec=0}})

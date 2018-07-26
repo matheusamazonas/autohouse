@@ -2,19 +2,18 @@ implementation module Programs
 
 import StdInt, StdBool, StdTuple, StdMisc
 import Data.Func
+from StdFunc import flip
 
 import iTasks
 
 import Language
 import Code
 import Interpret
-import Compatibility
+import Requirements
 import Peripheral.LED
 import Peripheral.Pin
 import Peripheral.DHT22
 import Peripheral.HCSR04
-
-class program v | arith, IF, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04, sdspub, iTasksSds, assign, retrn, userLed v
 
 thermostat :: Temperature -> Main (v () Stmt) | program v
 thermostat target = vari \t=(Temp 0.0) In { main =
@@ -112,29 +111,25 @@ sendShareHumi dev i = withShared (Hum 51.42) \hsh -> liftmTask dev i (shareHumid
 sendShareDist :: MTaskDevice MTaskInterval -> Task ()
 sendShareDist dev i = withShared 42 \dsh -> liftmTask dev i (shareDistance dsh)
 
-programsBySpec :: (Maybe MTaskDeviceSpec) -> [(Int,String)]
+programsBySpec :: (Maybe MTaskDeviceSpec) -> [(String, MTaskDevice MTaskInterval -> Task ())]
 programsBySpec Nothing = abort "Device doesnt have a Compatibility"
-programsBySpec (Just spec) = map (\(a,b,_) -> (a,b)) $ filter ((checkSpec spec) o thd3) programs
+programsBySpec spec = map (\p -> (p.Program.title,p.send)) $ filter (\p -> match p.req spec) programs
 where
-	programs :: [(Int,String,Main (Compatibility () Stmt))]
-	programs = [(0, "Thermostat", thermostat undef),
-	            (1, "Factorial",factorial undef undef undef),
-	            (2, "Switch", switch),
-	            (3, "Curtains", curtains undef),
-	            (4, "Movement switch", movSwitch),
-	            (5, "Share temperature", shareTemp undef),
-	            (6, "Share humidity", shareHumid undef),
-	            (7, "Share distance", shareDistance undef) ]
+	snd4 :: (a,b,c,d) -> b
+	snd4 (_,x,_,_) = x
 
-programTasks :: [MTaskDevice MTaskInterval -> Task ()]
-programTasks = [
-	sendThermostat, 
-	sendFactorial, 
-	sendSwitch, 
-	sendCurtains, 
-	sendMovSwitch, 
-	sendShareTemp, 
-	sendShareHumi,
-	sendShareDist
-	]
+programs :: [Program]
+programs = [
+	{pId = 0, title = "Thermostat", req = thermostat undef, send = sendThermostat},
+	{pId = 1, title = "Factorial", req = factorial undef undef undef, send = sendFactorial},
+	{pId = 2, title = "Switch", req = switch, send = sendSwitch},
+	{pId = 3, title = "Curtains", req = curtains undef, send = sendCurtains},
+	{pId = 4, title = "Movement switch", req = movSwitch, send = sendMovSwitch},
+	{pId = 5, title = "Share temperature", req = shareTemp undef, send = sendShareTemp},
+	{pId = 6, title = "Share humidity", req = shareHumid undef, send = sendShareHumi},
+	{pId = 7, title = "Share distance", req = shareDistance undef, send = sendShareDist} ]
+
+programIndex :: [(Int,String)]
+programIndex = map (\p -> (p.pId, p.Program.title)) programs
+
 
