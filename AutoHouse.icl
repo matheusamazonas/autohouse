@@ -1,4 +1,4 @@
-implementation module AutoHouse
+module AutoHouse
 
 import StdMisc, StdArray
 import Data.Func, Data.List, Data.Maybe
@@ -9,12 +9,19 @@ import iTasks
 import iTasks.Internal.Store
 
 import Interpret
-import Specification
+import Compatibility
+import Requirements
 import Interpret.Device
 import TTY
 import Programs
 
 import StdDebug, StdMisc
+
+:: House :== [Room]
+
+:: Room = Room Int String [Unit]
+
+:: Unit = Unit Int String MTaskDevice
 
 derive class iTask Room,Unit, TTYSettings, BaudRate, Parity, ByteSize, DeviceData, BCState
 
@@ -121,7 +128,7 @@ where
 			, haveLCD       = False
 			, haveHb        = False
 			, haveTemp      = True
-			, haveHumidity  = True
+			, haveHumid     = True
 			, haveUltra     = True
 			, aPins         = 1
 			, dPins         = 14

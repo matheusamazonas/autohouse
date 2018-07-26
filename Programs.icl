@@ -8,7 +8,7 @@ import iTasks
 import Language
 import Code
 import Interpret
-import Specification
+import Compatibility
 import Peripheral.LED
 import Peripheral.Pin
 import Peripheral.DHT22
@@ -113,10 +113,10 @@ sendShareDist :: MTaskDevice MTaskInterval -> Task ()
 sendShareDist dev i = withShared 42 \dsh -> liftmTask dev i (shareDistance dsh)
 
 programsBySpec :: (Maybe MTaskDeviceSpec) -> [(Int,String)]
-programsBySpec Nothing = abort "Device doesnt have a specification"
+programsBySpec Nothing = abort "Device doesnt have a Compatibility"
 programsBySpec (Just spec) = map (\(a,b,_) -> (a,b)) $ filter ((checkSpec spec) o thd3) programs
 where
-	programs :: [(Int,String,Main (Specification () Stmt))]
+	programs :: [(Int,String,Main (Compatibility () Stmt))]
 	programs = [(0, "Thermostat", thermostat undef),
 	            (1, "Factorial",factorial undef undef undef),
 	            (2, "Switch", switch),
