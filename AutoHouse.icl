@@ -44,7 +44,7 @@ house :: Shared House
 house = sdsFocus "AutoHouse" $ memoryStore "house" (Just [Room 0 "Living room" []])
 
 manageHouse :: (Shared House) -> Task ()
-manageHouse sh = forever $ enterChoiceWithShared "Rooms" [ChooseFromCheckGroup \(Room _ n _) -> n] sh
+manageHouse sh = forever $ enterChoiceWithShared "Rooms" [ChooseFromList \(Room _ n _) -> n] sh
 	>>* [OnAction ActionEdit (hasValue editRoom),
 	     OnAction ActionNew (always newRoom)]
 
@@ -80,12 +80,6 @@ editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) 
 	>>* [OnAction (Action "New device") (always (newUnit (sdsFocus r roomSh))),
 	     OnAction (Action "Send task") (hasValue sendTask),
 	     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
-where
-	sendTask :: Unit -> Task ()
-	sendTask u=:(Unit _ _ d) = getSpec u
-		>>= \ds -> enterChoice "Choose Task" [ChooseFromList fst] (programsBySpec ds)
-		>>= \(_,pt) -> chooseInterval
-		>>= \i -> pt d i
 
 // ----------- Unit -----------
 
@@ -184,7 +178,8 @@ where
 
 manageUnits :: Task ()
 manageUnits = enterChoiceWithShared "Choose a unit" [ChooseFromList \(Unit i n _) -> n] allUnits
-	>>= viewUnit
+	>>* [OnAction (Action "View Tasks") (hasValue viewUnit),
+	     OnAction (Action "Send Task") (hasValue sendTask) ]
 
 getSpec :: Unit -> Task (Maybe MTaskDeviceSpec)
 getSpec (Unit _ _ (Device ddsh _)) = get ddsh >>= \dd -> return dd.deviceSpec
@@ -193,6 +188,12 @@ getSpec (Unit _ _ (Device ddsh _)) = get ddsh >>= \dd -> return dd.deviceSpec
 
 chooseInterval :: Task MTaskInterval
 chooseInterval = updateInformation "Choose Interval" [] (OnInterval 1000)
+
+sendTask :: Unit -> Task ()
+sendTask u=:(Unit _ _ d) = getSpec u
+	>>= \ds -> enterChoice "Choose Task" [ChooseFromList fst] (programsBySpec ds)
+	>>= \(_,pt) -> chooseInterval
+	>>= \i -> pt d i
 
 newTask :: Task ()
 newTask = enterChoice "Choose Task" [ChooseFromList snd] programIndex

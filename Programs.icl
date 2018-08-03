@@ -15,6 +15,8 @@ import Peripheral.Pin
 import Peripheral.DHT22
 import Peripheral.HCSR04
 
+class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04, sdspub, iTasksSds, assign, retrn, userLed v
+
 thermostat :: Temperature -> Main (v () Stmt) | program v
 thermostat target = vari \t=(Temp 0.0) In { main =
 	t =. getTemp :.
