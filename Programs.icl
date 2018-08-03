@@ -14,8 +14,10 @@ import Peripheral.LED
 import Peripheral.Pin
 import Peripheral.DHT22
 import Peripheral.HCSR04
+import Peripheral.PIR
+import Peripheral.LightSensorDig
 
-class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04, sdspub, iTasksSds, assign, retrn, userLed v
+class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04, pir, lightSensorDig, sdspub, iTasksSds, assign, retrn, userLed v
 
 thermostat :: Temperature -> Main (v () Stmt) | program v
 thermostat target = vari \t=(Temp 0.0) In { main =
@@ -86,6 +88,18 @@ shareDistance sh = sds \d=sh In { main =
 	pub d :. noOp
 	}
 
+shareMov :: (Shared Bool) -> Main (v () Stmt) | program v
+shareMov sh = sds \m=sh In { main =
+	m =. isMoving :.
+	pub m :. noOp
+	}
+
+shareBrightDig :: (Shared Bool) -> Main (v () Stmt) | program v
+shareBrightDig sh = sds \b=sh In { main =
+	b =. isBright :.
+	pub b :. noOp
+	}
+
 sendThermostat :: MTaskDevice MTaskInterval -> Task ()
 sendThermostat dev i = updateInformation "Target temperature" [] (Temp 21.0)
 	>>= \temp -> liftmTask dev i (thermostat temp)
@@ -113,6 +127,12 @@ sendShareHumi dev i = withShared (Hum 51.42) \hsh -> liftmTask dev i (shareHumid
 sendShareDist :: MTaskDevice MTaskInterval -> Task ()
 sendShareDist dev i = withShared 42 \dsh -> liftmTask dev i (shareDistance dsh)
 
+sendShareMov :: MTaskDevice MTaskInterval -> Task ()
+sendShareMov dev i = withShared False \msh -> liftmTask dev i (shareMov msh)
+
+sendShareBrightDig :: MTaskDevice MTaskInterval -> Task ()
+sendShareBrightDig dev i = withShared False \bsh -> liftmTask dev i (shareBrightDig bsh)
+
 programsBySpec :: (Maybe MTaskDeviceSpec) -> [(String, MTaskDevice MTaskInterval -> Task ())]
 programsBySpec Nothing = abort "Device doesnt have a Compatibility"
 programsBySpec spec = map (\p -> (p.Program.title,p.send)) $ filter (\p -> match p.req spec) programs
@@ -129,9 +149,10 @@ programs = [
 	{pId = 4, title = "Movement switch", req = movSwitch, send = sendMovSwitch},
 	{pId = 5, title = "Share temperature", req = shareTemp undef, send = sendShareTemp},
 	{pId = 6, title = "Share humidity", req = shareHumid undef, send = sendShareHumi},
-	{pId = 7, title = "Share distance", req = shareDistance undef, send = sendShareDist} ]
+	{pId = 7, title = "Share distance", req = shareDistance undef, send = sendShareDist} ,
+	{pId = 8, title = "Share movement", req = shareMov undef, send = sendShareMov},
+	{pId = 9, title = "Shared digital brightness", req = shareBrightDig undef, send = sendShareBrightDig}]
 
 programIndex :: [(Int,String)]
 programIndex = map (\p -> (p.pId, p.Program.title)) programs
-
 

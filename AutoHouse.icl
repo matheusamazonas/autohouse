@@ -131,6 +131,8 @@ where
 			, haveTemp      = True
 			, haveHumid     = True
 			, haveUltra     = True
+			, haveMov       = True
+			, haveLightDig  = True
 			, aPins         = 1
 			, dPins         = 14
 			, stackSize     = 64
