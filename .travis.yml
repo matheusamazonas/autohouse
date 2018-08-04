@@ -1,0 +1,12 @@
+sudo: required
+
+matrix:
+  include:
+    - os: linux
+      language: generic
+    - os: osx
+      language: generic
+
+script:
+  - make
+
