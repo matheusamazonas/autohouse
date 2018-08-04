@@ -15,7 +15,12 @@ fetch:
 	tar -xvzf clean.tgz
 	rm clean.tgz
 
-build:
+build: build_clean_serial build_autohouse
+
+build_clean_serial:
+	make -C mTask/library/CleanSerial/
+
+build_autohouse:
 	$(CPM) project AutoHouse create
 	$(CPM) project AutoHouse.prj target iTasks
 	$(CPM) project AutoHouse.prj path add "$$PWD/mTask/library"
@@ -23,3 +28,6 @@ build:
 	$(CPM) project AutoHouse.prj path add "$$PWD/mTask/library/CleanSerial/POSIX"
 	$(CPM) project AutoHouse.prj set -dynamics -h 2000M -s 20M
 	$(CPM) AutoHouse.prj
+
+clean:
+	rm -r clean-bundle-complete
