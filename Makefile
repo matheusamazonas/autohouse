@@ -5,8 +5,16 @@ endif
 ifeq ($(UNAME_S),Darwin)
 	CLEAN_BUILD = "https://ftp.cs.ru.nl/Clean/builds/macos-x64/clean-bundle-complete-macos-x64-latest.tgz"
 endif
+ifeq ($(OS), Windows_NT)
+DETECTED_OS=Windows
+else
+DETECTED_OS=POSIX
+endif
 
-CPM := clean-bundle-complete/bin/cpm
+CLEAN_HOME := clean-bundle-complete
+CS_HOME := mTask/library/CleanSerial/
+CPM := $(CLEAN_HOME)/bin/cpm
+CLM := $(CLEAN_HOME)//bin/clm
 
 all: fetch build
 
@@ -18,7 +26,8 @@ fetch:
 build: build_clean_serial build_autohouse
 
 build_clean_serial:
-	make -C mTask/library/CleanSerial/
+	mkdir -p $(CS_HOME)/Clean\ System\ Files
+	gcc -c $(CS_HOME)/$(DETECTED_OS)/tty.c -o $(CS_HOME)/Clean\ System\ Files/ctty.o
 
 build_autohouse:
 	$(CPM) project AutoHouse create
@@ -30,4 +39,4 @@ build_autohouse:
 	$(CPM) AutoHouse.prj
 
 clean:
-	rm -r clean-bundle-complete
+	rm -r $(CLEAN_HOME)
