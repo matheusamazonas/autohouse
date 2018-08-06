@@ -18,7 +18,7 @@ build_autohouse:
 
 clean:
 	make -C $(CS_HOME) clean
-	find . -name "Clean System Files" -exec rm -r {} \;
-	find . -name "*sapl" -exec rm -r {} \;
-	find . -name "*www" -exec rm -r {} \;
+	find . -name "Clean System Files" -prune -exec rm -r {} \;
+	find . -name "*sapl" -prune -exec rm -r {} \;
+	find . -name "*www" -prune -exec rm -r {} \;
 	rm AutoHouse
