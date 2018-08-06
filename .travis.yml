@@ -6,5 +6,5 @@ matrix:
       language: generic
 
 script:
-  - make
+  - make -f Makefile_travis
 
