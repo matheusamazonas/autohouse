@@ -1,9 +1,3 @@
-ifeq ($(OS), Windows_NT)
-DETECTED_OS=Windows
-else
-DETECTED_OS=POSIX
-endif
-
 CS_HOME := mTask/library/CleanSerial/
 
 all: build
