@@ -17,7 +17,7 @@ import Peripheral.PIR
 import Peripheral.LightSensorDig
 import Peripheral.LightSensorAna
 
-class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, lcd, dht22, hcsr04, pir, lightSensorDig, lightSensorAna, sdspub, iTasksSds, assign, retrn, userLed v
+class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04, pir, lightSensorDig, lightSensorAna, sdspub, iTasksSds, assign, retrn, userLed v
 
 thermostat :: Temperature -> Main (v () Stmt) | program v
 thermostat target = vari \t=(Temp 0.0) In { main =
