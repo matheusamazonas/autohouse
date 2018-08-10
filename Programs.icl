@@ -2,7 +2,6 @@ implementation module Programs
 
 import StdInt, StdBool, StdTuple, StdMisc
 import Data.Func
-from StdFunc import flip
 
 import iTasks
 
@@ -16,8 +15,9 @@ import Peripheral.DHT22
 import Peripheral.HCSR04
 import Peripheral.PIR
 import Peripheral.LightSensorDig
+import Peripheral.LightSensorAna
 
-class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04, pir, lightSensorDig, sdspub, iTasksSds, assign, retrn, userLed v
+class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, lcd, dht22, hcsr04, pir, lightSensorDig, lightSensorAna, sdspub, iTasksSds, assign, retrn, userLed v
 
 thermostat :: Temperature -> Main (v () Stmt) | program v
 thermostat target = vari \t=(Temp 0.0) In { main =
@@ -100,6 +100,12 @@ shareBrightDig sh = sds \b=sh In { main =
 	pub b :. noOp
 	}
 
+shareBrightAna :: (Shared Int) -> Main (v () Stmt) | program v
+shareBrightAna sh = sds \b=sh In { main =
+	b =. getBrightness :.
+	pub b :. noOp
+	}
+
 sendThermostat :: MTaskDevice MTaskInterval -> Task ()
 sendThermostat dev i = updateInformation "Target temperature" [] (Temp 21.0)
 	>>= \temp -> liftmTask dev i (thermostat temp)
@@ -133,6 +139,9 @@ sendShareMov dev i = withShared False \msh -> liftmTask dev i (shareMov msh)
 sendShareBrightDig :: MTaskDevice MTaskInterval -> Task ()
 sendShareBrightDig dev i = withShared False \bsh -> liftmTask dev i (shareBrightDig bsh)
 
+sendShareBrightAna :: MTaskDevice MTaskInterval -> Task ()
+sendShareBrightAna dev i = withShared 0 \bsh -> liftmTask dev i (shareBrightAna bsh)
+
 programsBySpec :: (Maybe MTaskDeviceSpec) -> [(String, MTaskDevice MTaskInterval -> Task ())]
 programsBySpec Nothing = abort "Device doesnt have a Compatibility"
 programsBySpec spec = map (\p -> (p.Program.title,p.send)) $ filter (\p -> match p.req spec) programs
@@ -142,16 +151,17 @@ where
 
 programs :: [Program]
 programs = [
-	{pId = 0, title = "Thermostat", req = thermostat undef, send = sendThermostat},
-	{pId = 1, title = "Factorial", req = factorial undef undef undef, send = sendFactorial},
-	{pId = 2, title = "Switch", req = switch, send = sendSwitch},
-	{pId = 3, title = "Curtains", req = curtains undef, send = sendCurtains},
-	{pId = 4, title = "Movement switch", req = movSwitch, send = sendMovSwitch},
-	{pId = 5, title = "Share temperature", req = shareTemp undef, send = sendShareTemp},
-	{pId = 6, title = "Share humidity", req = shareHumid undef, send = sendShareHumi},
-	{pId = 7, title = "Share distance", req = shareDistance undef, send = sendShareDist} ,
-	{pId = 8, title = "Share movement", req = shareMov undef, send = sendShareMov},
-	{pId = 9, title = "Shared digital brightness", req = shareBrightDig undef, send = sendShareBrightDig}]
+	{pId =  0, title = "Thermostat", req = thermostat undef, send = sendThermostat},
+	{pId =  1, title = "Factorial", req = factorial undef undef undef, send = sendFactorial},
+	{pId =  2, title = "Switch", req = switch, send = sendSwitch},
+	{pId =  3, title = "Curtains", req = curtains undef, send = sendCurtains},
+	{pId =  4, title = "Movement switch", req = movSwitch, send = sendMovSwitch},
+	{pId =  5, title = "Share temperature", req = shareTemp undef, send = sendShareTemp},
+	{pId =  6, title = "Share humidity", req = shareHumid undef, send = sendShareHumi},
+	{pId =  7, title = "Share distance", req = shareDistance undef, send = sendShareDist} ,
+	{pId =  8, title = "Share movement", req = shareMov undef, send = sendShareMov},
+	{pId =  9, title = "Shared digital brightness", req = shareBrightDig undef, send = sendShareBrightDig},
+	{pId = 10, title = "Shared analog brightness", req = shareBrightAna undef, send = sendShareBrightAna}]
 
 programIndex :: [(Int,String)]
 programIndex = map (\p -> (p.pId, p.Program.title)) programs

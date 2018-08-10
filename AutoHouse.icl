@@ -133,6 +133,7 @@ where
 			, haveUltra     = True
 			, haveMov       = True
 			, haveLightDig  = True
+			, haveLightAna  = True
 			, aPins         = 1
 			, dPins         = 14
 			, stackSize     = 64
