@@ -107,7 +107,7 @@ newUnit :: (Shared Room) -> Task ()
 newUnit sh = enterInformation "Device name" []
 	>>= \name -> enterChoiceAs "Choose the device type" [ChooseFromDropdown snd] dTypes fst
 	>>= \ix -> (forms !! ix)
-	>>= \wd -> wd (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 name d:ds]) sh @! ()) <<@ NoUserInterface
+	>>= \wd -> wd (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 name d:ds]) sh @! ())
 where
 	dTypes :: [(Int, String)]
 	dTypes = [(0, "Simulator"),
@@ -118,7 +118,8 @@ where
 	newSerial :: Task TTYSettings
 	newSerial = updateInformation "Serial port settings" [] 
 		{ zero & 
-		  devicePath = "/dev/tty.usbmodem1421",
+		  // devicePath = "/dev/tty.usbmodem1421",
+		  devicePath = "/dev/tty.HC-05-01-DevB",
 		  xonxoff = True }
 	newTCP :: Task TCPSettings
 	newTCP = updateInformation "TCP settings" [] {host = "localhost", port=8123}
@@ -134,6 +135,7 @@ where
 			, haveMov       = True
 			, haveLightDig  = True
 			, haveLightAna  = True
+			, haveServo     = True
 			, aPins         = 1
 			, dPins         = 14
 			, stackSize     = 64
