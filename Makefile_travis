@@ -20,7 +20,7 @@ all: fetch build
 
 fetch:
 	curl -o clean.tgz $(CLEAN_BUILD)
-	tar -xvzf clean.tgz
+	tar -xzf clean.tgz
 	rm clean.tgz
 
 build: build_clean_serial build_autohouse
