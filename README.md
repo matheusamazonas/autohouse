@@ -4,7 +4,7 @@ macOS: [![Build Status](https://travis-ci.com/matheusamazonas/autohouse.svg?bran
 
 A house automation application developed as part of my [master's thesis](https://github.com/matheusamazonas/masterthesis) entitled "Developing Real Life, Task Oriented Applications for the Internet of Things". The application currenlty supports only Arduino boards.
 
-The application is built using the functional language [Clean](https://clean.cs.ru.nl/Clean) and the TOP library [iTasks](https://clean.cs.ru.nl/ITasks).
+The application is built using the functional language [Clean](https://clean.cs.ru.nl/Clean), the TOP library [iTasks](https://clean.cs.ru.nl/ITasks) and [mTask](https://gitlab.science.ru.nl/mlubbers/mTask/tree/peripherals).
 
 Requirements
 -----------
@@ -13,7 +13,7 @@ Requirements
 * CPM
 * iTasks
 
-All of the requirements are available [here](https://clean.cs.ru.nl/Download_Clean). Follow the instructions under "Clean and iTasks (Development)" and download `clean-bundle-itasks'.
+All of the requirements are available as one bundle [here](https://clean.cs.ru.nl/Download_Clean). Follow the instructions under "Clean and iTasks (Development)" and download `clean-bundle-itasks'.
 
 Building
 -----------
