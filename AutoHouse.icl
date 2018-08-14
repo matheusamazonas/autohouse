@@ -232,4 +232,4 @@ where
 		transientWorkflow "Manage house" "Create, delete and edit rooms" (manageHouse house),
 		transientWorkflow "Manage unit" "Create, delete and edit unit" manageUnits,
 		transientWorkflow "New task" "Send a task to a unit" newTask
-	]
+		]
