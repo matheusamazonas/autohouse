@@ -118,8 +118,8 @@ where
 	newSerial :: Task TTYSettings
 	newSerial = updateInformation "Serial port settings" [] 
 		{ zero & 
-		  // devicePath = "/dev/tty.usbmodem1421",
-		  devicePath = "/dev/tty.HC-05-01-DevB",
+		  devicePath = "/dev/tty.usbmodem1421",
+		  // devicePath = "/dev/tty.HC-05-01-DevB",
 		  xonxoff = True }
 	newTCP :: Task TCPSettings
 	newTCP = updateInformation "TCP settings" [] {host = "localhost", port=8123}
@@ -220,20 +220,16 @@ where
 
 // ----------- Main -----------
 
-main :: Task ()
-main = loginAndManageWorkList "Autohouse" workflows
-where
-	workflows = [transientWorkflow "Manage house" "Create, delete and edit rooms" (manageHouse house),
-	             transientWorkflow "Manage unit" "Create, delete and edit unit" manageUnits,
-	             transientWorkflow "New task" "Send a task to a unit" newTask
-	             ]
-
-Start world = startEngineWithOptions 
+Start world = doTasksWithOptions
 		(\cli options.defaultEngineCLIOptions cli {options & sessionTime = {tv_sec = 1000000000, tv_nsec=0}})
-		[ publish "/" $ const $ main
-		, publish "/simulators" $ const $ viewSims
+		[
+			onStartup (installWorkflows workflows),
+			onRequest "/" (loginAndManageWork "AutoHouse"),
+			onRequest "/simulators" viewSims
 		] world
-
-
-
-
+where
+	workflows = [
+		transientWorkflow "Manage house" "Create, delete and edit rooms" (manageHouse house),
+		transientWorkflow "Manage unit" "Create, delete and edit unit" manageUnits,
+		transientWorkflow "New task" "Send a task to a unit" newTask
+	]
