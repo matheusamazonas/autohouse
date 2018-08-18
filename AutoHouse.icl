@@ -78,8 +78,24 @@ where
 editRoom :: Room -> Task ()
 editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) -> n] ds
 	>>* [OnAction (Action "New device") (always (newUnit (sdsFocus r roomSh))),
+	     OnAction (Action "New Wifi") (always (newWifi (sdsFocus r roomSh))),
+	     OnAction (Action "New BT") (always (newBT (sdsFocus r roomSh))),
+	     OnAction (Action "New linux") (always (newLinux (sdsFocus r roomSh))),
 	     OnAction (Action "Send task") (hasValue sendTask),
 	     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
+where
+	newLinux :: (Shared Room) -> Task ()
+	newLinux sh
+	# d = {host="localhost", port=8123}
+	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "linux_client" d:ds]) sh @! ()) @! ()
+	newBT :: (Shared Room) -> Task ()
+	newBT sh
+	# d = {zero & devicePath = "/dev/tty.HC-05-01-DevB", xonxoff=True}
+	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "ardBT" d:ds]) sh @! ()) @! ()
+	newWifi :: (Shared Room) -> Task ()
+	newWifi sh
+	# d = { host = "192.168.0.110", port = 8123}
+	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "ardWiFi" d:ds]) sh @! ()) @! ()
 
 // ----------- Unit -----------
 
@@ -107,7 +123,7 @@ newUnit :: (Shared Room) -> Task ()
 newUnit sh = enterInformation "Device name" []
 	>>= \name -> enterChoiceAs "Choose the device type" [ChooseFromDropdown snd] dTypes fst
 	>>= \ix -> (forms !! ix)
-	>>= \wd -> wd (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 name d:ds]) sh @! ())
+	>>= \wd -> (wd (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 name d:ds]) sh -&&- return ())) @! ()
 where
 	dTypes :: [(Int, String)]
 	dTypes = [(0, "Simulator"),
@@ -119,10 +135,9 @@ where
 	newSerial = updateInformation "Serial port settings" [] 
 		{ zero & 
 		  devicePath = "/dev/tty.usbmodem1421",
-		  // devicePath = "/dev/tty.HC-05-01-DevB",
 		  xonxoff = True }
 	newTCP :: Task TCPSettings
-	newTCP = updateInformation "TCP settings" [] {host = "localhost", port=8123}
+	newTCP = updateInformation "TCP settings" [] {host = "192.168.0.110", port=8123}
 	newSimulator :: Task SimSettings
 	newSimulator = updateInformation "Simulator settings" [] $
 		SimSettings 
@@ -182,7 +197,7 @@ where
 					(\e -> viewInformation ("SDS doesnt exist anymore. " +++ e) [] ())
 
 manageUnits :: Task ()
-manageUnits = enterChoiceWithShared "Choose a unit" [ChooseFromList \(Unit i n _) -> n] allUnits
+manageUnits = forever $ enterChoiceWithShared "Choose a unit" [ChooseFromList \(Unit i n _) -> n] allUnits
 	>>* [OnAction (Action "View Tasks") (hasValue viewUnit),
 	     OnAction (Action "Send Task") (hasValue sendTask) ]
 
@@ -201,7 +216,7 @@ sendTask u=:(Unit _ _ d) = getSpec u
 	>>= \i -> pt d i
 
 newTask :: Task ()
-newTask = enterChoice "Choose Task" [ChooseFromList snd] programIndex
+newTask = forever $ enterChoice "Choose Task" [ChooseFromList snd] programIndex
 	>>= \(ix,n) -> chooseInterval
 	>>= \i -> compUnits (programs !! ix).req
 	>>= \us -> enterChoice "Choose unit" [ChooseFromList unitName] us
@@ -220,16 +235,16 @@ where
 
 // ----------- Main -----------
 
+main = allTasks 
+	[
+	(manageHouse house) <<@ Title "Manage House",
+	(manageUnits <<@ Title "Manage Units"),
+	newTask <<@ Title "New Task"
+	] <<@ ArrangeWithTabs False
+
 Start world = doTasksWithOptions
 		(\cli options.defaultEngineCLIOptions cli {options & sessionTime = {tv_sec = 1000000000, tv_nsec=0}})
 		[
-			onStartup (installWorkflows workflows),
-			onRequest "/" (loginAndManageWork "AutoHouse"),
+			onRequest "/" main,
 			onRequest "/simulators" viewSims
 		] world
-where
-	workflows = [
-		transientWorkflow "Manage house" "Create, delete and edit rooms" (manageHouse house),
-		transientWorkflow "Manage unit" "Create, delete and edit unit" manageUnits,
-		transientWorkflow "New task" "Send a task to a unit" newTask
-		]
