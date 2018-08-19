@@ -38,6 +38,25 @@ instance toString Room where
 instance toString Unit where
 	toString (Unit i n _) = n +++ " (" +++ toString i +++ ")"
 
+defaultSimulator :: SimSettings
+defaultSimulator = SimSettings 
+			{ haveLed       = True
+			, haveLCD       = False
+			, haveHb        = True
+			, haveTemp      = True
+			, haveHumid     = True
+			, haveUltra     = True
+			, haveMov       = True
+			, haveLightDig  = True
+			, haveLightAna  = True
+			, haveServo     = True
+			, aPins         = 1
+			, dPins         = 14
+			, stackSize     = 64
+			, bytesMemory   = 1024
+			, resolveLabels = False
+			} Automatic 1000.0
+
 // ----------- House -----------
 
 house :: Shared House
@@ -77,23 +96,26 @@ where
 
 editRoom :: Room -> Task ()
 editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) -> n] ds
-	>>* [OnAction (Action "New device") (always (newUnit (sdsFocus r roomSh))),
-	     OnAction (Action "New Wifi") (always (newWifi (sdsFocus r roomSh))),
-	     OnAction (Action "New BT") (always (newBT (sdsFocus r roomSh))),
-	     OnAction (Action "New linux") (always (newLinux (sdsFocus r roomSh))),
-	     OnAction (Action "Send task") (hasValue sendTask),
-	     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
+		>>* [OnAction (Action "New device") (always (newUnit (sdsFocus r roomSh))),
+		     OnAction (Action "New Wifi") (always (quickWifi (sdsFocus r roomSh))),
+		     OnAction (Action "New BT") (always (quickBT (sdsFocus r roomSh))),
+		     OnAction (Action "New linux") (always (quickLinux (sdsFocus r roomSh))),
+		     OnAction (Action "New simulator") (always (quickSim (sdsFocus r roomSh))),
+		     OnAction (Action "Send task") (hasValue sendTask),
+		     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
 where
-	newLinux :: (Shared Room) -> Task ()
-	newLinux sh
+	quickSim :: (Shared Room) -> Task ()
+	quickSim sh = (withDevice defaultSimulator) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "simulator" d:ds]) sh @! ()) >>| return ()
+	quickLinux :: (Shared Room) -> Task ()
+	quickLinux sh
 	# d = {host="localhost", port=8123}
 	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "linux_client" d:ds]) sh @! ()) @! ()
-	newBT :: (Shared Room) -> Task ()
-	newBT sh
+	quickBT :: (Shared Room) -> Task ()
+	quickBT sh
 	# d = {zero & devicePath = "/dev/tty.HC-05-01-DevB", xonxoff=True}
 	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "ardBT" d:ds]) sh @! ()) @! ()
-	newWifi :: (Shared Room) -> Task ()
-	newWifi sh
+	quickWifi :: (Shared Room) -> Task ()
+	quickWifi sh
 	# d = { host = "192.168.0.110", port = 8123}
 	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "ardWiFi" d:ds]) sh @! ()) @! ()
 
@@ -139,24 +161,7 @@ where
 	newTCP :: Task TCPSettings
 	newTCP = updateInformation "TCP settings" [] {host = "192.168.0.110", port=8123}
 	newSimulator :: Task SimSettings
-	newSimulator = updateInformation "Simulator settings" [] $
-		SimSettings 
-			{ haveLed       = True
-			, haveLCD       = False
-			, haveHb        = False
-			, haveTemp      = True
-			, haveHumid     = True
-			, haveUltra     = True
-			, haveMov       = True
-			, haveLightDig  = True
-			, haveLightAna  = True
-			, haveServo     = True
-			, aPins         = 1
-			, dPins         = 14
-			, stackSize     = 64
-			, bytesMemory   = 1024
-			, resolveLabels = False
-			} Automatic 1000.0
+	newSimulator = updateInformation "Simulator settings" [] defaultSimulator
 
 editUnit :: (Shared Room) Unit -> Task ()
 editUnit rsh u=:(Unit i _ (Device dsh _)) = forever $ get dsh >>* [OnValue (hasValue editInfo)]
@@ -235,6 +240,7 @@ where
 
 // ----------- Main -----------
 
+main :: Task [()]
 main = allTasks 
 	[
 	(manageHouse house) <<@ Title "Manage House",
@@ -242,6 +248,7 @@ main = allTasks
 	newTask <<@ Title "New Task"
 	] <<@ ArrangeWithTabs False
 
+Start :: *World -> *World
 Start world = doTasksWithOptions
 		(\cli options.defaultEngineCLIOptions cli {options & sessionTime = {tv_sec = 1000000000, tv_nsec=0}})
 		[
