@@ -101,23 +101,29 @@ editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) 
 		     OnAction (Action "New BT") (always (quickBT (sdsFocus r roomSh))),
 		     OnAction (Action "New linux") (always (quickLinux (sdsFocus r roomSh))),
 		     OnAction (Action "New simulator") (always (quickSim (sdsFocus r roomSh))),
+		     OnAction (Action "New serial") (always (quickSerial (sdsFocus r roomSh))),
 		     OnAction (Action "Send task") (hasValue sendTask),
 		     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
 where
-	quickSim :: (Shared Room) -> Task ()
-	quickSim sh = (withDevice defaultSimulator) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "simulator" d:ds]) sh @! ()) >>| return ()
-	quickLinux :: (Shared Room) -> Task ()
-	quickLinux sh
-	# d = {host="localhost", port=8123}
-	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "linux_client" d:ds]) sh @! ()) @! ()
-	quickBT :: (Shared Room) -> Task ()
-	quickBT sh
-	# d = {zero & devicePath = "/dev/tty.HC-05-01-DevB", xonxoff=True}
-	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "ardBT" d:ds]) sh @! ()) @! ()
 	quickWifi :: (Shared Room) -> Task ()
 	quickWifi sh
 	# d = { host = "192.168.0.110", port = 8123}
 	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "ardWiFi" d:ds]) sh @! ()) @! ()
+	quickBT :: (Shared Room) -> Task ()
+	quickBT sh
+	# d = {zero & devicePath = "/dev/tty.HC-05-01-DevB", xonxoff=True}
+	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "ardBT" d:ds]) sh @! ()) @! ()
+	quickLinux :: (Shared Room) -> Task ()
+	quickLinux sh
+	# d = {host="localhost", port=8123}
+	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "linux_client" d:ds]) sh @! ()) @! ()
+	quickSim :: (Shared Room) -> Task ()
+	quickSim sh = (withDevice defaultSimulator) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "simulator" d:ds]) sh @! ()) >>| return ()
+	quickSerial :: (Shared Room) -> Task ()
+	quickSerial sh
+	# d = { zero & devicePath = "/dev/tty.wchusbserial1420", xonxoff = True }
+	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "serial" d:ds]) sh @! ()) @! ()
+
 
 // ----------- Unit -----------
 
