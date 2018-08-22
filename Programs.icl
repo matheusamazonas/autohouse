@@ -23,17 +23,24 @@ class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04,
 on :== lit True
 off :== lit False
 
-thermostat :: Temperature -> Main (v () Stmt) | program v
-thermostat target = vari \t=0 In { main =
-	t =. getTemp :.
-	IF (t <. lit target)
+thermostat :: (Shared Temperature) -> Main (v () Stmt) | program v
+thermostat g = sds \goal=g In vari \temp=0 In { main =
+	temp =. getTemp :.
+	dIO D7 ? goal =. goal -. lit 100 :.
+	dIO D8 ? goal =. goal +. lit 100 :.
+	IF (temp <. goal)
 	(
-		dIO D0 =. on :.
-		dIO D1 =. off
+		heater =. on :.
+		ac =. off
 	) (
-		dIO D0 =. off :.
-		dIO D1 =. on
-	)}
+		heater =. off :.
+		ac =. on
+	) :.
+	pub goal :. noOp
+	}
+where
+	heater = dIO D13
+	ac = dIO D12
 
 switch :: Main (v () Stmt) | program v
 switch = { main = 
@@ -131,7 +138,7 @@ servoSwitch = vari \s=True In { main =
 
 sendThermostat :: MTaskDevice MTaskInterval -> Task ()
 sendThermostat dev i = updateInformation "Target temperature" [] 2100
-	>>= \temp -> liftmTask dev i (thermostat temp)
+	>>= \goal -> withShared 2100 \goal -> liftmTask dev i (thermostat goal)
 
 sendFactorial :: MTaskDevice MTaskInterval -> Task ()
 sendFactorial dev i = withShared 1 \result -> (updateInformation "Faculty of what" [] 4
@@ -172,9 +179,6 @@ sendServoSwitch dev i = liftmTask dev i servoSwitch
 programsBySpec :: (Maybe MTaskDeviceSpec) -> [(String, MTaskDevice MTaskInterval -> Task ())]
 programsBySpec Nothing = abort "Device doesnt have a Compatibility"
 programsBySpec spec = map (\p -> (p.Program.title,p.send)) $ filter (\p -> match p.req spec) programs
-where
-	snd4 :: (a,b,c,d) -> b
-	snd4 (_,x,_,_) = x
 
 programs :: [Program]
 programs = [
