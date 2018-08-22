@@ -70,7 +70,7 @@ manageHouse sh = forever $ enterChoiceWithShared "Rooms" [ChooseFromList \(Room 
 // ----------- Room -----------
 
 roomSh :: SDS Room Room Room
-roomSh = sdsLens "house" (const ()) (SDSRead r) (SDSWrite w) (SDSNotify n) house
+roomSh = sdsLens "house" (const ()) (SDSRead r) (SDSWrite w) (SDSNotifyConst n) house
 where
 	r :: Room [Room] -> MaybeError TaskException Room
 	r p rs = case find ((==) p) rs of
@@ -80,8 +80,8 @@ where
 	w p rs nr = case find ((==) p) rs of
 		Nothing = Ok $ Just [nr:rs]
 		Just _ = Ok $ Just $ replaceInList (==) nr rs
-	n :: Room [Room] Room -> SDSNotifyPred Room
-	n p1 _ _ = \_ p2 -> p1 == p2
+	n :: Room Room -> SDSNotifyPred Room
+	n p1 _ = \_ p2 -> p1 == p2
 
 newRoom :: Task ()
 newRoom = enterInformation "Room name" [] 
@@ -97,7 +97,6 @@ where
 editRoom :: Room -> Task ()
 editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) -> n] ds
 		>>* [OnAction (Action "New device") (always (newUnit (sdsFocus r roomSh))),
-		     OnAction (Action "New Wifi") (always (quickWifi (sdsFocus r roomSh))),
 		     OnAction (Action "New BT") (always (quickBT (sdsFocus r roomSh))),
 		     OnAction (Action "New linux") (always (quickLinux (sdsFocus r roomSh))),
 		     OnAction (Action "New simulator") (always (quickSim (sdsFocus r roomSh))),
@@ -105,10 +104,6 @@ editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) 
 		     OnAction (Action "Send task") (hasValue sendTask),
 		     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
 where
-	quickWifi :: (Shared Room) -> Task ()
-	quickWifi sh
-	# d = { host = "192.168.0.110", port = 8123}
-	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "ardWiFi" d:ds]) sh @! ()) @! ()
 	quickBT :: (Shared Room) -> Task ()
 	quickBT sh
 	# d = {zero & devicePath = "/dev/tty.HC-05-01-DevB", xonxoff=True}
