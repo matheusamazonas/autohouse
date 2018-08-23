@@ -45,26 +45,12 @@ newRoom = enterInformation "Room name" []
 editRoom :: Room -> Task ()
 editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) -> n] ds
 		>>* [OnAction (Action "New device") (always (newUnit r)),
-		     OnAction (Action "New BT") (always (quickBT (sdsFocus r roomSh))),
-		     OnAction (Action "New linux") (always (quickLinux (sdsFocus r roomSh))),
-		     OnAction (Action "New simulator") (always (quickSim (sdsFocus r roomSh))),
-		     OnAction (Action "New serial") (always (quickSerial (sdsFocus r roomSh))),
+		     OnAction (Action "New BT") (always (quickDevice "ardBT" defaultBT)),
+		     OnAction (Action "New linux") (always (quickDevice "linux" defaultTCP)),
+		     OnAction (Action "New simulator") (always (quickDevice "sim" defaultSimulator)),
+		     OnAction (Action "New serial") (always (quickDevice "serial" defaultSerial)),
 		     OnAction (Action "Send task") (hasValue sendTask),
 		     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
 where
-	// quickDevice :: a String -> Task () | channelSync a
-	// quickDevice d name = addUnit r name d
-	quickBT :: (Shared Room) -> Task ()
-	quickBT sh
-	# d = {zero & devicePath = "/dev/tty.HC-05-01-DevB", xonxoff=True}
-	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "ardBT" d:ds]) sh @! ()) @! ()
-	quickLinux :: (Shared Room) -> Task ()
-	quickLinux sh
-	# d = defaultTCP
-	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "linux_client" d:ds]) sh @! ()) @! ()
-	quickSim :: (Shared Room) -> Task ()
-	quickSim sh = (withDevice defaultSimulator) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "simulator" d:ds]) sh @! ()) >>| return ()
-	quickSerial :: (Shared Room) -> Task ()
-	quickSerial sh
-	# d = defaultSerial
-	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "serial" d:ds]) sh @! ()) @! ()
+	quickDevice :: String a -> Task () | channelSync, iTask a
+	quickDevice name d = addUnit r name d

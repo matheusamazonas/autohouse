@@ -25,7 +25,7 @@ nextUnitId :: Shared Int
 nextUnitId = sharedStore "nextUnitId" 0
 
 unitSh :: (Shared Room) -> SDS Unit Unit Unit
-unitSh roomSh = sdsLens "room" (const ()) (SDSRead r) (SDSWrite w) (SDSNotify n) roomSh
+unitSh roomSh = sdsLens "room" (const ()) (SDSRead r) (SDSWrite w) (SDSNotifyConst n) roomSh
 where
 	r :: Unit Room -> MaybeError TaskException Unit
 	r u (Room _ _ us) = case find ((==) u) us of
@@ -35,8 +35,8 @@ where
 	w p (Room i n us) u = case find ((==) p) us of
 		Nothing = Ok $ Just (Room i n [u:us])
 		Just _ = Ok $ Just $ (Room i n (replaceInList (==) u us))
-	n :: Unit Room Unit -> SDSNotifyPred Unit
-	n p1 _ _ = \_ p2 -> p1 == p2
+	n :: Unit Unit -> SDSNotifyPred Unit
+	n p1 _ = \_ p2 -> p1 == p2
 
 addUnit :: Room String a -> Task () | channelSync, iTask a
 addUnit r name dev

@@ -5,10 +5,8 @@ from System.Time import :: Timespec {..}
 import iTasks
 import Interpret.Device.Simulator
 
-import Default
 import House
 import Unit
-import Room
 
 main :: Task [()]
 main = allTasks 
