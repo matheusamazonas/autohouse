@@ -50,7 +50,7 @@ editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) 
 		     OnAction (Action "New simulator") (always (quickDevice "sim" defaultSimulator)),
 		     OnAction (Action "New serial") (always (quickDevice "serial" defaultSerial)),
 		     OnAction (Action "Send task") (hasValue sendTask),
-		     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
+		     OnAction (Action "Edit device") (hasValue editUnit)]
 where
 	quickDevice :: String a -> Task () | channelSync, iTask a
 	quickDevice name d = addUnit r name d

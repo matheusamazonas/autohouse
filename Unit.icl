@@ -24,19 +24,31 @@ instance toString Unit where
 nextUnitId :: Shared Int
 nextUnitId = sharedStore "nextUnitId" 0
 
-unitSh :: (Shared Room) -> SDS Unit Unit Unit
-unitSh roomSh = sdsLens "room" (const ()) (SDSRead r) (SDSWrite w) (SDSNotifyConst n) roomSh
+import StdMisc
+
+unitSh :: SDS Unit Unit Unit
+unitSh = sdsLens "room" (const ()) (SDSRead r) (SDSWrite w) (SDSNotifyConst n) house
 where
-	r :: Unit Room -> MaybeError TaskException Unit
-	r u (Room _ _ us) = case find ((==) u) us of
+	r :: Unit House -> MaybeError TaskException Unit
+	r _ [] = Error (exception "There are no rooms in the house")
+	r u [(Room _ _ us):rs] = case find ((==)u) us of
 		Just u = Ok u
-		Nothing = Error (exception ("Can't find unit " +++ toString u))
-	w :: Unit Room Unit -> MaybeError TaskException (Maybe Room)
-	w p (Room i n us) u = case find ((==) p) us of
-		Nothing = Ok $ Just (Room i n [u:us])
-		Just _ = Ok $ Just $ (Room i n (replaceInList (==) u us))
+		Nothing = r u rs
+	w :: Unit House Unit -> MaybeError TaskException (Maybe House)
+	w _ [] _ = Error (exception "There are no rooms in the house")
+	w _ h nu = case replaceUnit nu h [] of
+		Nothing = Error (exception "Can't find unit")
+		Just h = Ok $ Just h
+	where
+		replaceUnit :: Unit House House -> Maybe House
+		replaceUnit _ [] _ = Nothing
+		replaceUnit u [r=:(Room i n us):rs] acc = case find ((==)u) us of
+			Nothing = replaceUnit u rs [r:acc]
+			Just _
+				# us = replaceInList (==) u us
+				= Just $ [Room i n us:rs] ++ acc
 	n :: Unit Unit -> SDSNotifyPred Unit
-	n p1 _ = \_ p2 -> p1 == p2
+	n u1 _ = \_ u2 -> u1 == u2
 
 addUnit :: Room String a -> Task () | channelSync, iTask a
 addUnit r name dev
@@ -53,6 +65,7 @@ where
 	dTypes = [(0, "Simulator"),
 	          (1, "TCP"),
 	          (2, "Serial")]
+	saveUnit :: String Int -> Task ()
 	saveUnit name 0 = newSimulator >>= addUnit r name
 	saveUnit name 1 = newTCP       >>= addUnit r name
 	saveUnit name 2 = newSerial    >>= addUnit r name
@@ -63,11 +76,11 @@ where
 	newSimulator :: Task SimSettings
 	newSimulator = updateInformation "Simulator settings" [] defaultSimulator
 
-editUnit :: (Shared Room) Unit -> Task ()
-editUnit rsh u=:(Unit i _ (Device dsh _)) = forever $ get dsh >>* [OnValue (hasValue editInfo)]
+editUnit :: Unit -> Task ()
+editUnit u=:(Unit i _ (Device dsh _)) = forever $ get dsh >>* [OnValue (hasValue editInfo)]
 where
 	editInfo :: DeviceData -> Task ()
-	editInfo dd = updateSharedInformation title [UpdateAs getName putName] (sdsFocus u (unitSh rsh)) @! ()
+	editInfo dd = updateSharedInformation title [UpdateAs getName putName] (sdsFocus u unitSh) @! ()
 	where
 		title = Title $ "Edit unit #" +++ toString i
 		getName :: Unit -> String

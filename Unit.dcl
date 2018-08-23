@@ -14,10 +14,10 @@ instance == Unit
 instance toString Unit
 
 nextUnitId :: Shared Int
-unitSh :: (Shared Room) -> SDS Unit Unit Unit
+unitSh :: SDS Unit Unit Unit
 addUnit :: Room String a -> Task () | channelSync, iTask a
 newUnit :: Room -> Task ()
-editUnit :: (Shared Room) Unit -> Task ()
+editUnit :: Unit -> Task ()
 viewUnit :: Unit -> Task ()
 manageUnits :: Task ()
 getSpec :: Unit -> Task (Maybe MTaskDeviceSpec)
