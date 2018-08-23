@@ -57,6 +57,21 @@ defaultSimulator = SimSettings
 			, resolveLabels = False
 			} Automatic 1000.0
 
+defaultTCP :: TCPSettings
+defaultTCP = {host = "localhost", port=8123}
+
+defaultSerial :: TTYSettings
+defaultSerial = {zero & devicePath = "/dev/tty.wchusbserial1420", xonxoff=True} 
+
+defaultBT :: TTYSettings
+defaultBT = {zero & devicePath = "/dev/tty.HC-05-01-DevB", xonxoff=True}
+
+nextRoomId :: Shared Int
+nextRoomId = sharedStore "nextRoomId" 0
+
+nextUnitId :: Shared Int
+nextUnitId = sharedStore "nextUnitId" 0
+
 // ----------- House -----------
 
 house :: Shared House
@@ -85,18 +100,12 @@ where
 
 newRoom :: Task ()
 newRoom = enterInformation "Room name" [] 
-	>>= \name -> findFreeId
+	>>= \name -> upd ((+)1) nextRoomId
 	>>= \i -> upd (\rs -> [(Room i name []):rs]) house @! (Room i name []) @! ()
-where
-	findFreeId :: Task Int
-	findFreeId = get house 
-		>>= \rs -> case rs of
-			[] = return 0
-			_  = return $ inc $ (\(Room i _ _) -> i) (last rs)
 
 editRoom :: Room -> Task ()
 editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) -> n] ds
-		>>* [OnAction (Action "New device") (always (newUnit (sdsFocus r roomSh))),
+		>>* [OnAction (Action "New device") (always (newUnit r)),
 		     OnAction (Action "New BT") (always (quickBT (sdsFocus r roomSh))),
 		     OnAction (Action "New linux") (always (quickLinux (sdsFocus r roomSh))),
 		     OnAction (Action "New simulator") (always (quickSim (sdsFocus r roomSh))),
@@ -104,19 +113,21 @@ editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) 
 		     OnAction (Action "Send task") (hasValue sendTask),
 		     OnAction (Action "Edit device") (hasValue (editUnit (sdsFocus r roomSh)))]
 where
+	// quickDevice :: a String -> Task () | channelSync a
+	// quickDevice d name = addUnit r name d
 	quickBT :: (Shared Room) -> Task ()
 	quickBT sh
 	# d = {zero & devicePath = "/dev/tty.HC-05-01-DevB", xonxoff=True}
 	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "ardBT" d:ds]) sh @! ()) @! ()
 	quickLinux :: (Shared Room) -> Task ()
 	quickLinux sh
-	# d = {host="localhost", port=8123}
+	# d = defaultTCP
 	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "linux_client" d:ds]) sh @! ()) @! ()
 	quickSim :: (Shared Room) -> Task ()
 	quickSim sh = (withDevice defaultSimulator) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "simulator" d:ds]) sh @! ()) >>| return ()
 	quickSerial :: (Shared Room) -> Task ()
 	quickSerial sh
-	# d = { zero & devicePath = "/dev/tty.wchusbserial1420", xonxoff = True }
+	# d = defaultSerial
 	= (withDevice d) (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 "serial" d:ds]) sh @! ()) @! ()
 
 
@@ -142,25 +153,28 @@ where
 	n :: Unit Room Unit -> SDSNotifyPred Unit
 	n p1 _ _ = \_ p2 -> p1 == p2
 
-newUnit :: (Shared Room) -> Task ()
-newUnit sh = enterInformation "Device name" []
+addUnit :: Room String a -> Task () | channelSync, iTask a
+addUnit r name dev
+	# rSh = sdsFocus r roomSh
+	= upd ((+)1) nextUnitId
+	>>= \i -> ((withDevice dev) (\d -> upd (\(Room i n ds) -> Room i n [Unit i name d:ds]) rSh -&&- return ())) @! ()
+
+newUnit :: Room -> Task ()
+newUnit r = enterInformation "Device name" []
 	>>= \name -> enterChoiceAs "Choose the device type" [ChooseFromDropdown snd] dTypes fst
-	>>= \ix -> (forms !! ix)
-	>>= \wd -> (wd (\d -> upd (\(Room i n ds) -> Room i n [Unit 0 name d:ds]) sh -&&- return ())) @! ()
+	>>= saveUnit name
 where
 	dTypes :: [(Int, String)]
 	dTypes = [(0, "Simulator"),
 	          (1, "TCP"),
 	          (2, "Serial")]
-	forms :: [Task ((MTaskDevice -> Task a) -> Task a)] | iTask a
-	forms = [newSimulator @ withDevice, newTCP @ withDevice, newSerial @ withDevice]
+	saveUnit name 0 = newSimulator >>= addUnit r name
+	saveUnit name 1 = newTCP       >>= addUnit r name
+	saveUnit name 2 = newSerial    >>= addUnit r name
 	newSerial :: Task TTYSettings
-	newSerial = updateInformation "Serial port settings" [] 
-		{ zero & 
-		  devicePath = "/dev/tty.usbmodem1421",
-		  xonxoff = True }
+	newSerial = updateInformation "Serial port settings" [] defaultSerial
 	newTCP :: Task TCPSettings
-	newTCP = updateInformation "TCP settings" [] {host = "192.168.0.110", port=8123}
+	newTCP = updateInformation "TCP settings" [] defaultTCP
 	newSimulator :: Task SimSettings
 	newSimulator = updateInformation "Simulator settings" [] defaultSimulator
 
