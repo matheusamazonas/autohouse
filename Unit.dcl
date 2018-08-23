@@ -4,8 +4,9 @@ import iTasks
 import TTY
 import Interpret.Device
 from Room import :: Room
+from Requirements import :: Requirements
 
-:: Unit = Unit Int String MTaskDevice
+:: Unit = Unit Int String MTaskDevice Bool
 
 derive class iTask Unit, BaudRate, Parity, ByteSize, DeviceData, TTYSettings
 
@@ -23,3 +24,5 @@ manageUnits :: Task ()
 getSpec :: Unit -> Task (Maybe MTaskDeviceSpec)
 sendTask :: Unit -> Task ()
 chooseInterval :: Task MTaskInterval
+getUnitName :: Unit -> String
+compatible :: (Main (Requirements () Stmt)) Unit -> Task (Unit, Bool)

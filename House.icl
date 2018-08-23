@@ -29,16 +29,10 @@ newTask :: Task ()
 newTask = forever $ enterChoice "Choose Task" [ChooseFromList snd] programIndex
 	>>= \(ix,n) -> chooseInterval
 	>>= \i -> compUnits (programs !! ix).req
-	>>= \us -> enterChoice "Choose unit" [ChooseFromList unitName] us
-	>>= \(Unit _ _ d) -> (programs !! ix).send d i
+	>>= \us -> enterChoice "Choose unit" [ChooseFromList getUnitName] us
+	>>= \(Unit _ _ d _) -> (programs !! ix).send d i
 where
-	unitName :: Unit -> String
-	unitName (Unit _ n _) = n
 	compUnits :: (Main (Requirements () Stmt)) -> Task [Unit]
 	compUnits r = get allUnits
 		>>= \us -> allTasks (map (compatible r) us)
 		>>= \up -> return $ map fst $ filter snd up
-	where
-		compatible :: (Main (Requirements () Stmt)) Unit -> Task (Unit, Bool)
-		compatible r u=:(Unit _ _ (Device ddsh _)) = get ddsh
-			>>= \dd -> return (u, match r dd.deviceSpec)

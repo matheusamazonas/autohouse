@@ -43,7 +43,7 @@ newRoom = enterInformation "Room name" []
 	>>= \i -> upd (\rs -> [(Room i name []):rs]) house @! (Room i name []) @! ()
 
 editRoom :: Room -> Task ()
-editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _) -> n] ds
+editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \(Unit _ n _ _) -> n] ds
 		>>* [OnAction (Action "New device") (always (newUnit r)),
 		     OnAction (Action "New BT") (always (quickDevice "ardBT" defaultBT)),
 		     OnAction (Action "New linux") (always (quickDevice "linux" defaultTCP)),
