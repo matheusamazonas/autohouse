@@ -130,9 +130,6 @@ manageUnits = forever $ enterChoiceWithShared "Choose a unit" [ChooseFromList \(
 	     OnAction (Action "Send Task") (hasValue sendTask),
 	     OnAction ActionDelete (hasValue deleteUnit)]
 
-getSpec :: Unit -> Task (Maybe MTaskDeviceSpec)
-getSpec (Unit _ _ (Device ddsh _) _) = get ddsh >>= \dd -> return dd.deviceSpec
-
 chooseInterval :: Task MTaskInterval
 chooseInterval = updateInformation "Choose Interval" [] (OnInterval 1000)
 
@@ -141,6 +138,9 @@ sendTask u=:(Unit _ _ d _) = getSpec u
 	>>= \ds -> enterChoice "Choose Task" [ChooseFromList fst] (programsBySpec ds)
 	>>= \(_,pt) -> chooseInterval
 	>>= \i -> pt d i
+where
+	getSpec :: Unit -> Task (Maybe MTaskDeviceSpec)
+	getSpec (Unit _ _ (Device ddsh _) _) = get ddsh >>= \dd -> return dd.deviceSpec
 
 compatible :: (Main (Requirements () Stmt)) Unit -> Task (Unit, Bool)
 compatible r u=:(Unit _ _ (Device ddsh _) _) = get ddsh

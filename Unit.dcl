@@ -21,7 +21,6 @@ newUnit :: Room -> Task ()
 editUnit :: Unit -> Task ()
 viewUnit :: Unit -> Task ()
 manageUnits :: Task ()
-getSpec :: Unit -> Task (Maybe MTaskDeviceSpec)
 sendTask :: Unit -> Task ()
 chooseInterval :: Task MTaskInterval
 getUnitName :: Unit -> String
