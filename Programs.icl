@@ -136,6 +136,15 @@ servoSwitch = vari \s=True In { main =
 		)
 	}
 
+blink :: Main (v () Stmt) | program v
+blink = vari \v=False In { main =
+	v =. Not v :.
+	IF (v) (
+		dIO D13 =. on
+	) (
+		dIO D13 =. off
+	)}
+
 sendThermostat :: MTaskDevice MTaskInterval -> Task ()
 sendThermostat dev i = updateInformation "Target temperature" [] 2100
 	>>= \goal -> withShared 2100 \goal -> liftmTask dev i (thermostat goal)
@@ -176,6 +185,9 @@ sendShareBrightAna dev i = withShared 0 \bsh -> liftmTask dev i (shareBrightAna 
 sendServoSwitch :: MTaskDevice MTaskInterval -> Task ()
 sendServoSwitch dev i = liftmTask dev i servoSwitch
 
+sendBlink :: MTaskDevice MTaskInterval -> Task ()
+sendBlink dev i = liftmTask dev i blink
+
 programsBySpec :: (Maybe MTaskDeviceSpec) -> [(String, MTaskDevice MTaskInterval -> Task ())]
 programsBySpec Nothing = abort "Device doesnt have a Compatibility"
 programsBySpec spec = map (\p -> (p.Program.title,p.send)) $ filter (\p -> match p.req spec) programs
@@ -193,7 +205,8 @@ programs = [
 	{pId =  8, title = "Share movement", req = shareMov undef, send = sendShareMov},
 	{pId =  9, title = "Shared digital brightness", req = shareBrightDig undef, send = sendShareBrightDig},
 	{pId = 10, title = "Shared analog brightness", req = shareBrightAna undef, send = sendShareBrightAna},
-	{pId = 11, title = "Servo switch", req = servoSwitch, send = sendServoSwitch}]
+	{pId = 11, title = "Servo switch", req = servoSwitch, send = sendServoSwitch},
+	{pId = 12, title = "Blink", req = blink, send = sendBlink}]
 
 programIndex :: [(Int,String)]
 programIndex = map (\p -> (p.pId, p.Program.title)) programs
