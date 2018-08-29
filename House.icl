@@ -29,8 +29,8 @@ newTask :: Task ()
 newTask = forever $ enterChoice "Choose Task" [ChooseFromList snd] programIndex
 	>>= \(ix,n) -> chooseInterval
 	>>= \i -> compUnits (programs !! ix).req
-	>>= \us -> enterChoice "Choose unit" [ChooseFromList getUnitName] us
-	>>= \(Unit _ _ d _) -> (programs !! ix).send d i
+	>>= \us -> enterChoice "Choose unit" [ChooseFromList \u -> u.uName] us
+	>>= \u -> (programs !! ix).send u.uDev i
 where
 	compUnits :: (Main (Requirements () Stmt)) -> Task [Unit]
 	compUnits r = get allUnits

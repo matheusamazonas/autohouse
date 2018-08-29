@@ -6,7 +6,15 @@ import Interpret.Device
 from Room import :: Room
 from Requirements import :: Requirements
 
-:: Unit = Unit Int String MTaskDevice Bool
+:: AutoTask :== (Int, [Dynamic])
+
+:: Unit =
+		{ uId :: Int,
+		  uName :: String,
+		  uDev :: MTaskDevice,
+		  uStatus :: Bool,
+		  uTasks :: [AutoTask]
+		}
 
 derive class iTask Unit, BaudRate, Parity, ByteSize, DeviceData, TTYSettings
 
@@ -23,5 +31,4 @@ viewUnit :: Unit -> Task ()
 manageUnits :: Task ()
 sendTask :: Unit -> Task ()
 chooseInterval :: Task MTaskInterval
-getUnitName :: Unit -> String
 compatible :: (Main (Requirements () Stmt)) Unit -> Task (Unit, Bool)

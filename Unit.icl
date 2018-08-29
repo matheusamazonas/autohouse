@@ -15,14 +15,16 @@ import Default
 
 derive class iTask Unit, BaudRate, Parity, ByteSize, DeviceData, TTYSettings, BCState
 
+gDefault{|Dynamic|} = dynamic ()
+
 instance == Unit where
-	(==) (Unit i1 n1 _ _) (Unit i2 n2 _ _) = i1 == i2 && n1 == n2
+	(==) u1 u2 = u1.uId == u2.uId
 
 instance toString Unit where
-	toString (Unit i n _ _) = n +++ " (" +++ toString i +++ ")"
+	toString u = u.uName +++ " (" +++ toString u.uId +++ ")"
 
-getUnitName :: Unit -> String
-getUnitName (Unit _ n _ _) = n
+unitData :: Unit -> Shared DeviceData
+unitData {uDev=(Device dd _)} = dd
 
 nextUnitId :: Shared Int
 nextUnitId = sharedStore "nextUnitId" 0
@@ -55,7 +57,10 @@ addUnit :: Room String a -> Task () | channelSync, iTask a
 addUnit r name dev
 	# rSh = sdsFocus r roomSh
 	= upd ((+)1) nextUnitId
-	>>= \i -> ((withDevice dev) (\d -> upd (\(Room i n ds) -> Room i n [Unit i name d True:ds]) rSh -&&- return ())) @! ()
+	>>= \i = ((withDevice dev) (\d -> upd (\(Room i n ds) -> Room i n [(add i d):ds]) rSh)) @! ()
+where
+	add :: Int MTaskDevice -> Unit
+	add i d = {uId = i, uName = name, uDev = d, uStatus = True, uTasks = []}
 
 newUnit :: Room -> Task ()
 newUnit r = enterInformation "Device name" []
@@ -78,17 +83,17 @@ where
 	newSimulator = updateInformation "Simulator settings" [] defaultSimulator
 
 editUnit :: Unit -> Task ()
-editUnit u=:(Unit i _ (Device dsh _) _) = forever $ get dsh >>* [OnValue (hasValue editInfo)]
+editUnit u = forever $ get (unitData u) >>* [OnValue (hasValue editInfo)]
 where
 	editInfo :: DeviceData -> Task ()
-	editInfo dd = updateSharedInformation title [UpdateAs getUnitName putName] (sdsFocus u unitSh) @! ()
+	editInfo dd = updateSharedInformation title [UpdateAs (\v -> v.uName) putName] (sdsFocus u unitSh) @! ()
 	where
-		title = Title $ "Edit unit #" +++ toString i
+		title = Title $ "Edit unit #" +++ toString u.uId
 		putName :: Unit String -> Unit
-		putName (Unit i _ us c) n = Unit i n us c
+		putName u n = {u & uName = n}
 
 viewUnit :: Unit -> Task ()
-viewUnit u=:(Unit i _ (Device dsh _) _) = forever $ get dsh >>* [OnValue (hasValue showInfo)]
+viewUnit u = forever $ get (unitData u) >>* [OnValue (hasValue showInfo)]
 where
 	showInfo :: DeviceData -> Task ()
 	showInfo dd = viewDevShares dd.deviceShares
@@ -114,18 +119,16 @@ where
 					(\e -> viewInformation ("SDS doesnt exist anymore. " +++ e) [] ())
 
 deleteUnit :: Unit -> Task ()
-deleteUnit u=:(Unit i n dev _) = upd disableDevice (sdsFocus u unitSh)
-	>| disconnectDevice dev
+deleteUnit u = upd (\u -> {u & uStatus = False}) (sdsFocus u unitSh)
+	>| disconnectDevice u.uDev
 	>| get house 
 	>>= \h -> set (actualDelete h) house @! ()
 where
-	disableDevice :: Unit -> Unit
-	disableDevice (Unit i n d _) = Unit i n d True
 	actualDelete :: House -> House
 	actualDelete rs = map (\(Room i n us) -> (Room i n (delete u us))) rs
 
 manageUnits :: Task ()
-manageUnits = forever $ enterChoiceWithShared "Choose a unit" [ChooseFromList \(Unit i n _ _) -> n] allUnits
+manageUnits = forever $ enterChoiceWithShared "Choose a unit" [ChooseFromList \u -> u.uName] allUnits
 	>>* [OnAction (Action "View Tasks") (hasValue viewUnit),
 	     OnAction (Action "Send Task") (hasValue sendTask),
 	     OnAction ActionDelete (hasValue deleteUnit)]
@@ -134,14 +137,15 @@ chooseInterval :: Task MTaskInterval
 chooseInterval = updateInformation "Choose Interval" [] (OnInterval 1000)
 
 sendTask :: Unit -> Task ()
-sendTask u=:(Unit _ _ d _) = getSpec u
+sendTask u = getSpec u
 	>>= \ds -> enterChoice "Choose Task" [ChooseFromList fst] (programsBySpec ds)
 	>>= \(_,pt) -> chooseInterval
-	>>= \i -> pt d i
+	>>= \i -> upd (\u -> {u & uTasks = u.uTasks}) (sdsFocus u unitSh)// TODO: ACTUALLY ADD
+	>| pt u.uDev i
 where
 	getSpec :: Unit -> Task (Maybe MTaskDeviceSpec)
-	getSpec (Unit _ _ (Device ddsh _) _) = get ddsh >>= \dd -> return dd.deviceSpec
+	getSpec u = get (unitData u) >>= \dd -> return dd.deviceSpec
 
 compatible :: (Main (Requirements () Stmt)) Unit -> Task (Unit, Bool)
-compatible r u=:(Unit _ _ (Device ddsh _) _) = get ddsh
+compatible r u = get (unitData u)
 	>>= \dd -> return (u, match r dd.deviceSpec)
