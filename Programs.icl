@@ -139,11 +139,8 @@ servoSwitch = vari \s=True In { main =
 blink :: Main (v () Stmt) | program v
 blink = vari \v=False In { main =
 	v =. Not v :.
-	IF (v) (
-		dIO D13 =. on
-	) (
-		dIO D13 =. off
-	)}
+	dIO D13 =. v :. noOp
+	}
 
 sendThermostat :: MTaskDevice MTaskInterval -> Task ()
 sendThermostat dev i = updateInformation "Target temperature" [] 2100
