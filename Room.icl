@@ -20,21 +20,21 @@ instance == Room where
 instance toString Room where
 	toString (Room i n _) = n +++ " (" +++ toString i +++ ")"
 
-nextRoomId :: Shared Int
+nextRoomId :: Shared RoomId
 nextRoomId = sharedStore "nextRoomId" 0
 
-roomSh :: SDS Room Room Room
+roomSh :: SDS RoomId Room Room
 roomSh = sdsLens "house" (const ()) (SDSRead r) (SDSWrite w) (SDSNotifyConst n) house
 where
-	r :: Room [Room] -> MaybeError TaskException Room
-	r p rs = case find ((==) p) rs of
+	r :: RoomId House -> MaybeError TaskException Room
+	r p rs = case find (\(Room i _ _) -> p == i) rs of
 		Just r = Ok r
 		Nothing = Error $ exception ("Can't find " +++ toString p)
-	w :: Room [Room] Room -> MaybeError TaskException (Maybe [Room])
-	w p rs nr = case find ((==) p) rs of
+	w :: RoomId [Room] Room -> MaybeError TaskException (Maybe [Room])
+	w p rs nr = case find (\(Room i _ _) -> p == i) rs of
 		Nothing = Ok $ Just [nr:rs]
 		Just _ = Ok $ Just $ replaceInList (==) nr rs
-	n :: Room Room -> SDSNotifyPred Room
+	n :: RoomId Room -> SDSNotifyPred RoomId
 	n p1 _ = \_ p2 -> p1 == p2
 
 newRoom :: Task ()
@@ -43,14 +43,14 @@ newRoom = enterInformation "Room name" []
 	>>= \i -> upd (\rs -> [(Room i name []):rs]) house @! (Room i name []) @! ()
 
 editRoom :: Room -> Task ()
-editRoom r=:(Room _ n ds) = enterChoice (Title n) [ChooseFromList \u->u.uName] ds
-		>>* [OnAction (Action "New device") (always (newUnit r)),
+editRoom r=:(Room rid n ds) = enterChoice (Title n) [ChooseFromList \u->u.uName] ds
+		>>* [OnAction (Action "New device") (always (newUnit rid)),
 		     OnAction (Action "New BT") (always (quickDevice "ardBT" defaultBT)),
 		     OnAction (Action "New linux") (always (quickDevice "linux" defaultTCP)),
 		     OnAction (Action "New simulator") (always (quickDevice "sim" defaultSimulator)),
 		     OnAction (Action "New serial") (always (quickDevice "serial" defaultSerial)),
-		     OnAction (Action "Send task") (hasValue sendTask),
+		     OnAction (Action "Send task") (hasValue sendNewTask),
 		     OnAction (Action "Edit device") (hasValue editUnit)]
 where
 	quickDevice :: String a -> Task () | channelSync, iTask a
-	quickDevice name d = addUnit r name d
+	quickDevice name d = addUnit rid name d

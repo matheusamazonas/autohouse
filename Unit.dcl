@@ -3,10 +3,15 @@ definition module Unit
 import iTasks
 import TTY
 import Interpret.Device
-from Room import :: Room
+from Room import :: Room, :: RoomId
+from Programs import :: ProgramData
 from Requirements import :: Requirements
 
-:: AutoTask :== (Int, [Dynamic])
+:: AutoTask :== (ProgramData, MTaskInterval, Migration)
+
+:: Migration = DoNotMigrate | SameRoom | AnyRoom
+
+:: UnitId :== Int
 
 :: Unit =
 		{ uId :: Int,
@@ -16,19 +21,20 @@ from Requirements import :: Requirements
 		  uTasks :: [AutoTask]
 		}
 
-derive class iTask Unit, BaudRate, Parity, ByteSize, DeviceData, TTYSettings
+derive class iTask Unit, BaudRate, Parity, ByteSize, DeviceData, TTYSettings, Migration
 
 instance == Unit
 
 instance toString Unit
 
-nextUnitId :: Shared Int
-unitSh :: SDS Unit Unit Unit
-addUnit :: Room String a -> Task () | channelSync, iTask a
-newUnit :: Room -> Task ()
+nextUnitId :: Shared UnitId
+unitSh :: SDS UnitId Unit Unit
+addUnit :: RoomId String a -> Task () | channelSync, iTask a
+newUnit :: RoomId -> Task ()
 editUnit :: Unit -> Task ()
 viewUnit :: Unit -> Task ()
 manageUnits :: Task ()
-sendTask :: Unit -> Task ()
-chooseInterval :: Task MTaskInterval
-compatible :: (Main (Requirements () Stmt)) Unit -> Task (Unit, Bool)
+sendNewTask :: Unit -> Task ()
+enterTaskDetails :: Task (MTaskInterval, Migration)
+filterCompUnits :: (Main (Requirements () Stmt)) [Unit] -> Task [Unit]
+sendProgramToUnit :: AutoTask Unit -> Task ()

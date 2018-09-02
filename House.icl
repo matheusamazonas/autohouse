@@ -11,6 +11,8 @@ import Room
 import Unit
 import Programs
 
+gDefault{|Dynamic|} = dynamic ()
+
 house :: Shared House
 house = sdsFocus "AutoHouse" $ memoryStore "house" (Just [Room 0 "Living room" []])
 
@@ -27,12 +29,9 @@ where
 
 newTask :: Task ()
 newTask = forever $ enterChoice "Choose Task" [ChooseFromList snd] programIndex
-	>>= \(ix,n) -> chooseInterval
-	>>= \i -> compUnits (programs !! ix).req
-	>>= \us -> enterChoice "Choose unit" [ChooseFromList \u -> u.uName] us
-	>>= \u -> (programs !! ix).send u.uDev i
-where
-	compUnits :: (Main (Requirements () Stmt)) -> Task [Unit]
-	compUnits r = get allUnits
-		>>= \us -> allTasks (map (compatible r) us)
-		>>= \up -> return $ map fst $ filter snd up
+	>>= \(ix,n) -> enterTaskDetails
+	>>= \(int,m) -> get allUnits
+	>>= filterCompUnits (programs !! ix).req
+	>>= enterChoice "Choose unit" [ChooseFromList \u -> u.uName]
+	>>= \u -> (programs!!ix).fill
+	>>= \pd -> sendProgramToUnit (pd,int,m) u

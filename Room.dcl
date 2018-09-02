@@ -8,9 +8,11 @@ instance toString Room
 
 derive class iTask Room
 
+:: RoomId :== Int
+
 :: Room = Room Int String [Unit]
 
-nextRoomId :: Shared Int
-roomSh :: SDS Room Room Room
+nextRoomId :: Shared RoomId
+roomSh :: SDS RoomId Room Room
 newRoom :: Task ()
 editRoom :: Room -> Task ()

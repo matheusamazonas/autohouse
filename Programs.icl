@@ -20,8 +20,16 @@ import Peripheral.Servo
 
 class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04, pir, lightSensorDig, lightSensorAna, servo, sdspub, iTasksSds, assign, retrn, userLed v
 
+derive class iTask Program, Requirements
+
+gDefault{|Dynamic|} = dynamic ()
+
 on :== lit True
 off :== lit False
+
+fromDynamic :: Dynamic -> a | TC a
+fromDynamic (x :: a^) = x
+fromDynamic _ = abort "Dynamic is from unexpected type"
 
 thermostat :: (Shared Temperature) -> Main (v () Stmt) | program v
 thermostat g = sds \goal=g In vari \temp=0 In { main =
@@ -148,9 +156,16 @@ buttonTest = { main =
 	dIO D7 ? ledOff (lit LED1)
 	}
 
-sendThermostat :: MTaskDevice MTaskInterval -> Task ()
-sendThermostat dev i = updateInformation "Target temperature" [] 2100
-	>>= \goal -> withShared 2100 \goal -> liftmTask dev i (thermostat goal)
+fillThermostat :: Task ProgramData
+fillThermostat = updateInformation "Target temperature" [] 2100
+	>>= \goal -> return (0, [dynamic goal])
+
+programDataError :: String -> Task ()
+programDataError name = throw $ "Trying to send " +++ name +++ " program with wrong TaskData values"
+
+sendThermostat :: MTaskDevice MTaskInterval ProgramData -> Task ()
+sendThermostat dev i (0, [dx:_]) = withShared (fromDynamic dx) \goal -> liftmTask dev i (thermostat goal)
+sendThermostat _ _ _ = programDataError "thermostat"
 
 sendFactorial :: MTaskDevice MTaskInterval -> Task ()
 sendFactorial dev i = withShared 1 \result -> (updateInformation "Faculty of what" [] 4
@@ -188,32 +203,35 @@ sendShareBrightAna dev i = withShared 0 \bsh -> liftmTask dev i (shareBrightAna 
 sendServoSwitch :: MTaskDevice MTaskInterval -> Task ()
 sendServoSwitch dev i = liftmTask dev i servoSwitch
 
-sendBlink :: MTaskDevice MTaskInterval -> Task ()
-sendBlink dev i = liftmTask dev i blink
+fillBlink :== return (1,[])
+
+sendBlink :: MTaskDevice MTaskInterval ProgramData -> Task ()
+sendBlink dev i (_,[]) = liftmTask dev i blink
+sendBlink _ _ _ = programDataError "blink"
 
 sendButtonTest :: MTaskDevice MTaskInterval -> Task ()
 sendButtonTest dev i = liftmTask dev i buttonTest
 
-programsBySpec :: (Maybe MTaskDeviceSpec) -> [(String, MTaskDevice MTaskInterval -> Task ())]
+programsBySpec :: (Maybe MTaskDeviceSpec) -> [Program]
 programsBySpec Nothing = abort "Device doesnt have a Compatibility"
-programsBySpec spec = map (\p -> (p.Program.title,p.send)) $ filter (\p -> match p.req spec) programs
+programsBySpec spec = filter (\p -> match p.req spec) programs
 
 programs :: [Program]
 programs = [
-	{pId =  0, title = "Thermostat", req = thermostat undef, send = sendThermostat},
-	{pId =  1, title = "Switch", req = switch, send = sendSwitch},
-	{pId =  2, title = "Curtains", req = curtains undef, send = sendCurtains},
-	{pId =  3, title = "Movement switch", req = movSwitch, send = sendMovSwitch},
-	{pId =  4, title = "Factorial", req = factorial undef undef undef, send = sendFactorial},
-	{pId =  5, title = "Share temperature", req = shareTemp undef, send = sendShareTemp},
-	{pId =  6, title = "Share humidity", req = shareHumid undef, send = sendShareHumi},
-	{pId =  7, title = "Share distance", req = shareDistance undef, send = sendShareDist} ,
-	{pId =  8, title = "Share movement", req = shareMov undef, send = sendShareMov},
-	{pId =  9, title = "Shared digital brightness", req = shareBrightDig undef, send = sendShareBrightDig},
-	{pId = 10, title = "Shared analog brightness", req = shareBrightAna undef, send = sendShareBrightAna},
-	{pId = 11, title = "Servo switch", req = servoSwitch, send = sendServoSwitch},
-	{pId = 12, title = "Blink", req = blink, send = sendBlink},
-	{pId = 13, title = "Button test", req = buttonTest, send = sendButtonTest}]
+	{pId =  0, title = "Thermostat", req = thermostat undef, fill = fillThermostat, send = sendThermostat},
+	// {pId =  1, title = "Switch", req = switch, send = sendSwitch},
+	// {pId =  2, title = "Curtains", req = curtains undef, send = sendCurtains},
+	// {pId =  3, title = "Movement switch", req = movSwitch, send = sendMovSwitch},
+	// {pId =  4, title = "Factorial", req = factorial undef undef undef, send = sendFactorial},
+	// {pId =  5, title = "Share temperature", req = shareTemp undef, send = sendShareTemp},
+	// {pId =  6, title = "Share humidity", req = shareHumid undef, send = sendShareHumi},
+	// {pId =  7, title = "Share distance", req = shareDistance undef, send = sendShareDist} ,
+	// {pId =  8, title = "Share movement", req = shareMov undef, send = sendShareMov},
+	// {pId =  9, title = "Shared digital brightness", req = shareBrightDig undef, send = sendShareBrightDig},
+	// {pId = 10, title = "Shared analog brightness", req = shareBrightAna undef, send = sendShareBrightAna},
+	// {pId = 11, title = "Servo switch", req = servoSwitch, send = sendServoSwitch},
+	{pId = 1, title = "Blink", req = blink, fill = fillBlink, send = sendBlink}]
+	// {pId = 13, title = "Button test", req = buttonTest, send = sendButtonTest}]
 
 programIndex :: [(Int,String)]
 programIndex = map (\p -> (p.pId, p.Program.title)) programs

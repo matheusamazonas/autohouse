@@ -4,11 +4,16 @@ import iTasks
 import Interpret
 import Requirements
 
+derive class iTask Program
+
 :: Program = { pId :: Int,
                title :: String,
                req ::  Main (Requirements () Stmt),
-               send :: MTaskDevice MTaskInterval -> Task () }
+               fill :: Task ProgramData,
+               send :: MTaskDevice MTaskInterval ProgramData -> Task () }
 
-programsBySpec :: (Maybe MTaskDeviceSpec) -> [(String, MTaskDevice MTaskInterval -> Task ())]
+:: ProgramData :== (Int, [Dynamic])
+
+programsBySpec :: (Maybe MTaskDeviceSpec) -> [Program]
 programs :: [Program]
 programIndex :: [(Int,String)]
