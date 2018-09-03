@@ -49,7 +49,7 @@ editRoom r=:(Room rid n ds) = enterChoice (Title n) [ChooseFromList \u->u.uName]
 		     OnAction (Action "New linux") (always (quickDevice "linux" defaultTCP)),
 		     OnAction (Action "New simulator") (always (quickDevice "sim" defaultSimulator)),
 		     OnAction (Action "New serial") (always (quickDevice "serial" defaultSerial)),
-		     OnAction (Action "Send task") (hasValue sendNewTask),
+		     OnAction (Action "Send task") (hasValue sendNewProgram),
 		     OnAction (Action "Edit device") (hasValue editUnit),
 		     OnAction (Action "Disconnect") (hasValue disconnectUnit)]
 where

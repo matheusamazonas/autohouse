@@ -9,7 +9,7 @@ import iTasks.Internal.Store
 
 import Room
 import Unit
-import Programs
+import Program
 
 gDefault{|Dynamic|} = dynamic ()
 
@@ -31,7 +31,7 @@ newTask :: Task ()
 newTask = forever $ enterChoice "Choose Task" [ChooseFromList snd] programIndex
 	>>= \(ix,n) -> enterTaskDetails
 	>>= \(int,m) -> get allUnits
-	>>= filterCompUnits (programs !! ix).req
+	>>= filterCompUnits (programs !! ix)
 	>>= enterChoice "Choose unit" [ChooseFromList \u -> u.uName]
 	>>= \u -> (programs!!ix).fill
 	>>= \pd -> sendProgramToUnit (pd,int,m) u

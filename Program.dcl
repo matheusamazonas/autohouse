@@ -1,4 +1,4 @@
-definition module Programs
+definition module Program
 
 import iTasks
 import Interpret
@@ -13,6 +13,10 @@ derive class iTask Program
                send :: MTaskDevice MTaskInterval ProgramData -> Task () }
 
 :: ProgramData :== (Int, [Dynamic])
+
+:: ProgramInstance :== (ProgramData, MTaskInterval, Migration)
+
+:: Migration = DoNotMigrate | SameRoom | AnyRoom
 
 programsBySpec :: (Maybe MTaskDeviceSpec) -> [Program]
 programs :: [Program]

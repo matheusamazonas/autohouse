@@ -1,4 +1,4 @@
-implementation module Programs
+implementation module Program
 
 import StdInt, StdBool, StdTuple, StdMisc
 import Data.Func
