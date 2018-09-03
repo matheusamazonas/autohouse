@@ -38,3 +38,4 @@ sendNewTask :: Unit -> Task ()
 enterTaskDetails :: Task (MTaskInterval, Migration)
 filterCompUnits :: (Main (Requirements () Stmt)) [Unit] -> Task [Unit]
 sendProgramToUnit :: AutoTask Unit -> Task ()
+disconnectUnit :: Unit -> Task ()

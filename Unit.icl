@@ -33,12 +33,12 @@ unitSh :: SDS UnitId Unit Unit
 unitSh = sdsLens "room" (const ()) (SDSRead r) (SDSWrite w) (SDSNotifyConst n) house
 where
 	r :: UnitId House -> MaybeError TaskException Unit
-	r _ [] = Error (exception "Read: There are no rooms in the house")
+	r p [] = Error (exception $ "Unit read: There are no rooms in the house (" +++ toString p +++ ")")
 	r p [(Room _ _ us):rs] = case find (\u -> u.uId == p) us of
 		Just u = Ok u
 		Nothing = r p rs
 	w :: UnitId House Unit -> MaybeError TaskException (Maybe House)
-	w _ [] _ = Error (exception "Write: There are no rooms in the house")
+	w _ [] _ = Error (exception "Unit write: There are no rooms in the house")
 	w _ h nu = case replaceUnit nu h [] of
 		Nothing = Error (exception "Can't find unit")
 		Just h = Ok $ Just h
@@ -118,9 +118,12 @@ where
 					(viewSharedInformation "SDS Value" [] (sdsFocus True sds) @! ())
 					(\e -> viewInformation ("SDS doesnt exist anymore. " +++ e) [] ())
 
+disconnectUnit :: Unit -> Task ()
+disconnectUnit u = upd (\u -> {u & uStatus = False}) (sdsFocus u.uId unitSh)
+	>| disconnectDevice u.uDev @! ()
+
 deleteUnit :: Unit -> Task ()
-deleteUnit u = upd (\u -> {u & uStatus = False}) (sdsFocus u.uId unitSh)
-	>| disconnectDevice u.uDev
+deleteUnit u = disconnectUnit u
 	>| get house 
 	>>= \h -> set (actualDelete h) house @! ()
 where
@@ -131,6 +134,7 @@ manageUnits :: Task ()
 manageUnits = forever $ enterChoiceWithShared "Choose a unit" [ChooseFromList \u -> u.uName] allUnits
 	>>* [OnAction (Action "View Tasks") (hasValue viewUnit),
 	     OnAction (Action "Send Task") (hasValue sendNewTask),
+	     OnAction (Action "Disocnnect") (hasValue disconnectUnit),
 	     OnAction ActionDelete (hasValue deleteUnit)]
 
 enterTaskDetails :: Task (MTaskInterval, Migration)
@@ -165,8 +169,9 @@ where
 migrateTasks :: RoomId UnitId -> Task ()
 migrateTasks rid uid = traceValue ("Trying to migrate from devices with id " +++ toString uid) 
 	>| get (sdsFocus rid roomSh)
-	>>= \r ->  get (sdsFocus uid unitSh)
-	>>= \u -> allTasks (map (migrateTask r u) u.uTasks) @! ()
+	>>= \r -> catchAll 
+		(get (sdsFocus uid unitSh) >>= \u -> allTasks (map (migrateTask r u) u.uTasks) @! ())
+		(\_ -> traceValue "Can't migrate unit tasks" @! ())
 where
 	migrateTask :: Room Unit AutoTask -> Task ()
 	migrateTask _ _ (_,_,DoNotMigrate) = return ()

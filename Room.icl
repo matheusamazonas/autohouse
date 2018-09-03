@@ -29,7 +29,7 @@ where
 	r :: RoomId House -> MaybeError TaskException Room
 	r p rs = case find (\(Room i _ _) -> p == i) rs of
 		Just r = Ok r
-		Nothing = Error $ exception ("Can't find " +++ toString p)
+		Nothing = Error $ exception ("Room read: Can't find room " +++ toString p)
 	w :: RoomId [Room] Room -> MaybeError TaskException (Maybe [Room])
 	w p rs nr = case find (\(Room i _ _) -> p == i) rs of
 		Nothing = Ok $ Just [nr:rs]
@@ -50,7 +50,8 @@ editRoom r=:(Room rid n ds) = enterChoice (Title n) [ChooseFromList \u->u.uName]
 		     OnAction (Action "New simulator") (always (quickDevice "sim" defaultSimulator)),
 		     OnAction (Action "New serial") (always (quickDevice "serial" defaultSerial)),
 		     OnAction (Action "Send task") (hasValue sendNewTask),
-		     OnAction (Action "Edit device") (hasValue editUnit)]
+		     OnAction (Action "Edit device") (hasValue editUnit),
+		     OnAction (Action "Disconnect") (hasValue disconnectUnit)]
 where
 	quickDevice :: String a -> Task () | channelSync, iTask a
 	quickDevice name d = addUnit rid name d
