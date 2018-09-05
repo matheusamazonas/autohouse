@@ -139,9 +139,9 @@ servoSwitch = vari \s=True In { main =
 		IF (s) (
 			writeAngle (lit 180)
 		) (
-			writeAngle (lit 0) :.
-			s =. (Not s)
-		)
+			writeAngle (lit 0)
+		) :.
+		s =. (Not s) :. noOp
 	}
 
 blink :: Main (v () Stmt) | program v
