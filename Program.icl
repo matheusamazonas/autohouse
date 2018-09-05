@@ -146,8 +146,12 @@ servoSwitch = vari \s=True In { main =
 
 blink :: Main (v () Stmt) | program v
 blink = vari \v=False In { main =
-	v =. Not v :.
-	dIO D13 =. v :. noOp
+	IF (v) (
+		ledOn (lit LED1)
+	) (
+		ledOff (lit LED1)
+	) :.
+	v =. Not v :. noOp
 	}
 
 buttonTest :: Main (v () Stmt) | program v
