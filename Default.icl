@@ -27,7 +27,7 @@ defaultTCP :: TCPSettings
 defaultTCP = {host = "localhost", port=8123}
 
 defaultSerial :: TTYSettings
-defaultSerial = {zero & devicePath = "/dev/tty.HC-05-01-DevB", xonxoff=True} 
+defaultSerial = {zero & devicePath = "/dev/tty.usbmodem1421", xonxoff=True} 
 
 defaultBT :: TTYSettings
 defaultBT = {zero & devicePath = "/dev/tty.HC-05-01-DevB", xonxoff=True}
