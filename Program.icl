@@ -18,7 +18,7 @@ import Peripheral.LightSensorDig
 import Peripheral.LightSensorAna
 import Peripheral.Servo
 
-class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04, pir, lightSensorDig, lightSensorAna, servo, sdspub, iTasksSds, assign, retrn, userLed v
+class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04, pir, lightSensorDig, lightSensorAna, servo, sdspub, sds, assign, retrn, userLed v
 
 derive class iTask Program, Requirements
 
