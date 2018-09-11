@@ -47,8 +47,8 @@ thermostat g = sds \goal=g In vari \temp=0 In { main =
 	pub goal :. noOp
 	}
 where
-	heater = dIO D13
-	ac = dIO D12
+	heater = dIO D12
+	ac = dIO D13
 
 switch :: Main (v () Stmt) | program v
 switch = { main = 
@@ -59,32 +59,38 @@ switch = { main =
 	)}
 
 curtains :: Int -> Main (v () Stmt) | program v
-curtains t = { main = 
+curtains t = vari \i=0 In { main = 
 	IF (getBrightness >. lit t) (
-		dIO D0 =. on
+		i <. (lit 36) ? (
+			i =. i +. lit 1 :.
+			writeAngle (i *. (lit 5))
+		)
 	) (
-		dIO D0 =. off
+		i >. (lit 0) ? (
+			i =. i -. lit 1 :.
+			writeAngle (i *. (lit 5))
+		)
 	)}
 
 movSwitch :: Main (v () Stmt) | program v
 movSwitch = { main = 
 	IF (isMoving) (
-		dIO D0 =. on
+		dIO D12 =. on
 	) ( 
-		dIO D0 =. off
+		dIO D12 =. off
 	)}
 
 lockWhenDark :: Int -> Main (v () Stmt) | program v
 lockWhenDark t = { main = 
-	getBrightness <. lit t ? dIO D1 =. on
+	getBrightness <. lit t ? dIO D10 =. on
 	}
 
 fanWhenHumid :: Main (v () Stmt) | program v
 fanWhenHumid = { main = 
 	IF (getHumid >. lit 5000) (
-		dIO D8 =. on
+		dIO D10 =. on
 	) (
-		dIO D8 =. off
+		dIO D10 =. off
 	)}
 
 factorial :: (Shared Int) Int UserLED -> Main (v () Stmt) | program v
