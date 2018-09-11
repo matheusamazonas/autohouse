@@ -40,7 +40,7 @@ where
 newRoom :: Task ()
 newRoom = enterInformation "Room name" [] 
 	>>= \name -> upd ((+)1) nextRoomId
-	>>= \i -> upd (\rs -> [(Room i name []):rs]) house @! (Room i name []) @! ()
+	>>= \i -> upd (\rs -> [(Room i name []):rs]) house @! () 
 
 editRoom :: Room -> Task ()
 editRoom r=:(Room rid n ds) = enterChoice (Title n) [ChooseFromList \u->u.uName] ds
