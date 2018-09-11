@@ -1,6 +1,6 @@
 implementation module Unit
 
-import Data.List, Data.Eq, Data.Maybe
+import Data.List, Data.Eq
 from Data.Func import $
 import qualified Data.Map as DM
 
@@ -75,15 +75,12 @@ where
 
 addUnit :: RoomId String a -> Task () | channelSync, iTask a
 addUnit rid name dev = upd ((+)1) nextUnitId
-	>>= \i -> (withDevice dev (add i) (\_ -> migrateTasks rid i) <<@ NoUserInterface)
-		||- wait "Connecting to unit..." (exists i) (sdsFocus rid roomSh) @! ()
+	>>= \i -> withDevice dev (add i) (\_ -> migrateTasks rid i)
 where
 	add :: Int MTaskDevice -> Task ()
 	add uid dev = upd (\(Room i n ds) -> Room i n [(createUnit uid dev):ds]) (sdsFocus rid roomSh) @! ()
 	createUnit :: Int MTaskDevice -> Unit
 	createUnit i d = {uId = i, uName = name, uDev = d, uStatus = True, uTasks = []}
-	exists :: UnitId Room -> Bool
-	exists uid (Room _ _ us) = isJust $ find (\u -> u.uId == uid) us
 
 editUnit :: Unit -> Task ()
 editUnit u = forever $ get (unitData u) >>* [OnValue (hasValue editInfo)]
