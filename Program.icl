@@ -34,8 +34,8 @@ fromDynamic _ = abort "Dynamic is from unexpected type"
 thermostat :: (Shared Temperature) -> Main (v () Stmt) | program v
 thermostat g = sds \goal=g In vari \temp=0 In { main =
 	temp =. getTemp :.
-	dIO D7 ? goal =. goal -. lit 100 :.
-	dIO D8 ? goal =. goal +. lit 100 :.
+	dIO D7 ? goal =. goal -. lit 1000 :.
+	dIO D8 ? goal =. goal +. lit 1000 :.
 	IF (temp <. goal)
 	(
 		heater =. on :.
