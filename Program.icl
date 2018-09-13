@@ -87,7 +87,7 @@ lockWhenDark t = { main =
 
 fanWhenHumid :: Main (v () Stmt) | program v
 fanWhenHumid = { main = 
-	IF (getHumid >. lit 5000) (
+	IF ((getHumid >. lit 5000) &.(getDistance >. lit 10)) (
 		dIO D10 =. on
 	) (
 		dIO D10 =. off
