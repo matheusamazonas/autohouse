@@ -50,9 +50,9 @@ where
 	heater = dIO D12
 	ac = dIO D13
 
-switch :: Main (v () Stmt) | program v
-switch = { main = 
-	IF (dIO D0) (
+switch :: DigitalPin -> Main (v () Stmt) | program v
+switch p = { main = 
+	IF (dIO p) (
 		ledOn (lit LED1)
 	) (
 		ledOff (lit LED1)
@@ -177,10 +177,12 @@ sendThermostat :: MTaskDevice MTaskInterval ProgramData -> Task ()
 sendThermostat dev i (0, [dx:[]]) = withShared (fromDynamic dx) \goal -> liftmTask dev i (thermostat goal)
 sendThermostat _ _ _ = programDataError "thermostat"
 
-fillSwitch :== return (1,[])
+fillSwitch :: Task ProgramData
+fillSwitch = updateInformation "Select switch pin" [] D10
+	>>= \p -> return(1, [dynamic p])
 
 sendSwitch :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendSwitch dev i (1,[])= liftmTask dev i switch
+sendSwitch dev i (1,[dp:[]]) = liftmTask dev i (switch (fromDynamic dp))
 sendSwitch _ _ _ = programDataError "switch"
 
 fillCurtains :: Task ProgramData
@@ -267,7 +269,7 @@ programsBySpec spec = filter (\p -> match p.req spec) programs
 programs :: [Program]
 programs = [
 	{pId =  0, title = "Thermostat", req = thermostat undef, fill = fillThermostat, send = sendThermostat},
-	{pId =  1, title = "Switch", req = switch, fill = fillSwitch, send = sendSwitch},
+	{pId =  1, title = "Switch", req = switch undef, fill = fillSwitch, send = sendSwitch},
 	{pId =  2, title = "Curtains", req = curtains undef, fill = fillCurtains, send = sendCurtains},
 	{pId =  3, title = "Movement switch", req = movSwitch, fill = fillMovSwitch, send = sendMovSwitch},
 	{pId =  4, title = "Factorial", req = factorial undef undef undef, fill = fillFactorial, send = sendFactorial},
