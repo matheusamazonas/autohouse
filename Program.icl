@@ -166,6 +166,14 @@ buttonTest = { main =
 	dIO D7 ? ledOff (lit LED1)
 	}
 
+garageDoor :: Int -> Main (v () Stmt) | program v
+garageDoor x = vari \open=False In { main = 
+	IF (getDistance <. lit x) (
+		dIO D10 =. on
+	) (
+		dIO D10 =. off
+	)}
+
 programDataError :: String -> Task ()
 programDataError name = throw $ "Trying to send " +++ name +++ " program with wrong TaskData values"
 
@@ -262,6 +270,14 @@ sendButtonTest :: MTaskDevice MTaskInterval ProgramData -> Task ()
 sendButtonTest dev i (13,[]) = liftmTask dev i buttonTest
 sendButtonTest _ _ _ = programDataError "buttonTest"
 
+fillGarageDoor :: Task ProgramData
+fillGarageDoor = updateInformation "Minimal distance in cm" [] 300
+	>>= \d -> return (14, [dynamic d])
+
+sendGarageDoor :: MTaskDevice MTaskInterval ProgramData -> Task ()
+sendGarageDoor dev i (14,[dd:[]]) = liftmTask dev i (garageDoor (fromDynamic dd))
+sendGarageDoor _ _ _ = programDataError "garageDoor"
+
 programsBySpec :: (Maybe MTaskDeviceSpec) -> [Program]
 programsBySpec Nothing = abort "Device doesnt have a Compatibility"
 programsBySpec spec = filter (\p -> match p.req spec) programs
@@ -281,7 +297,8 @@ programs = [
 	{pId = 10, title = "Shared analog brightness", req = shareBrightAna undef, fill = fillShareBrightAna, send = sendShareBrightAna},
 	{pId = 11, title = "Servo switch", req = servoSwitch, fill = fillServoSwitch, send = sendServoSwitch},
 	{pId = 12, title = "Blink", req = blink, fill = fillBlink, send = sendBlink},
-	{pId = 13, title = "Button test", req = buttonTest, fill = fillButtonTest, send = sendButtonTest}]
+	{pId = 13, title = "Button test", req = buttonTest, fill = fillButtonTest, send = sendButtonTest},
+	{pId = 14, title = "Garage door", req = garageDoor undef, fill = fillGarageDoor, send = sendGarageDoor}]
 
 programIndex :: [(Int,String)]
 programIndex = map (\p -> (p.pId, p.Program.title)) programs
