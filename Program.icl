@@ -176,6 +176,21 @@ garageDoor x = vari \open=False In { main =
 		ledOff (lit LED1)
 	)}
 
+controlWindows :: Temperature Temperature -> Main (v () Stmt) | program v
+controlWindows target error = vari \t=0 In vari \i=0 In { main = 
+	t :. getTemp :.
+	IF ((t <=. (lit target) +. (lit error)) |. (t <=. (lit target) -. (lit error))) (
+		i <. (lit 90) ? (
+			i =. i +. lit 1 :.
+			writeAngle (i *. (lit 2))
+		)
+	) (
+		i >. (lit 0) ? (
+			i =. i -. lit 1 :.
+			writeAngle (i *. (lit 2))
+		)
+	)}
+
 programDataError :: String -> Task ()
 programDataError name = throw $ "Trying to send " +++ name +++ " program with wrong TaskData values"
 
@@ -280,6 +295,15 @@ sendGarageDoor :: MTaskDevice MTaskInterval ProgramData -> Task ()
 sendGarageDoor dev i (14,[dd:[]]) = liftmTask dev i (garageDoor (fromDynamic dd))
 sendGarageDoor _ _ _ = programDataError "garageDoor"
 
+fillControlWindows :: Task ProgramData
+fillControlWindows = updateInformation "Target temperature" [] 2100
+	>>= \t -> updateInformation "Temperature error" [] 500
+	>>= \e -> return (15, [dynamic t, dynamic e])
+
+sendControlWindows :: MTaskDevice MTaskInterval ProgramData -> Task ()
+sendControlWindows dev i (15,[dt,de:[]]) = liftmTask dev i (controlWindows (fromDynamic dt) (fromDynamic de))
+sendControlWindows _ _ _ = programDataError "controlWindows"
+
 programsBySpec :: (Maybe MTaskDeviceSpec) -> [Program]
 programsBySpec Nothing = abort "Device doesnt have a Compatibility"
 programsBySpec spec = filter (\p -> match p.req spec) programs
@@ -300,7 +324,8 @@ programs = [
 	{pId = 11, title = "Servo switch", req = servoSwitch, fill = fillServoSwitch, send = sendServoSwitch},
 	{pId = 12, title = "Blink", req = blink, fill = fillBlink, send = sendBlink},
 	{pId = 13, title = "Button test", req = buttonTest, fill = fillButtonTest, send = sendButtonTest},
-	{pId = 14, title = "Garage door", req = garageDoor undef, fill = fillGarageDoor, send = sendGarageDoor}]
+	{pId = 14, title = "Garage door", req = garageDoor undef, fill = fillGarageDoor, send = sendGarageDoor},
+	{pId = 15, title = "Control windows", req = controlWindows undef undef, fill = fillControlWindows, send = sendControlWindows}]
 
 programIndex :: [(Int,String)]
 programIndex = map (\p -> (p.pId, p.Program.title)) programs
