@@ -169,9 +169,11 @@ buttonTest = { main =
 garageDoor :: Int -> Main (v () Stmt) | program v
 garageDoor x = vari \open=False In { main = 
 	IF (getDistance <. lit x) (
-		dIO D10 =. on
+		dIO D10 =. on :.
+		ledOn (lit LED1)
 	) (
-		dIO D10 =. off
+		dIO D10 =. off :.
+		ledOff (lit LED1)
 	)}
 
 programDataError :: String -> Task ()
