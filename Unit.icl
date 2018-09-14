@@ -26,6 +26,9 @@ instance toString Unit where
 unitData :: Unit -> Shared DeviceData
 unitData {uDev=(Device dd _)} = dd
 
+unitChannels :: Unit -> Shared Channels
+unitChannels {uDev = (Device _ ch)} = ch
+
 nextUnitId :: Shared UnitId
 nextUnitId = sharedStore "nextUnitId" 0
 
@@ -106,7 +109,10 @@ where
 			-|| (allTasks $ 'DM'.elems $ 'DM'.mapWithKey viewDevTask tm)
 		where
 			viewDevTask :: Int Bool -> Task ()
-			viewDevTask i b = viewInformation ("Task " +++ toString i) [] b @! ()
+			viewDevTask i b = viewInformation ("Task " +++ toString i) [] b
+				>>* [OnAction ActionDelete (always (deleteTask i))]
+			deleteTask :: Int -> Task ()
+			deleteTask i = sendMessages (unitChannels u) [MTTaskDel i] @! ()
 		viewDevShares :: ('DM'.Map Int (Bool, SDS Bool BCValue BCValue)) -> Task ()
 		viewDevShares sm = viewInformation "Device Shares" [] ()
 			-|| (allTasks $ 'DM'.elems $ 'DM'.mapWithKey viewDevShare sm) 
