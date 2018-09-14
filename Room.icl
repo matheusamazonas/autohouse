@@ -45,10 +45,10 @@ newRoom = enterInformation "Room name" []
 editRoom :: Room -> Task ()
 editRoom r=:(Room rid n ds) = enterChoice (Title n) [ChooseFromList \u->u.uName] ds
 		>>* [OnAction (Action "New device") (always (newUnit rid)),
-		     OnAction (Action "New BT") (always (quickDevice "ardBT" defaultBT)),
-		     OnAction (Action "New linux") (always (quickDevice "linux" defaultTCP)),
-		     OnAction (Action "New simulator") (always (quickDevice "sim" defaultSimulator)),
-		     OnAction (Action "New serial") (always (quickDevice "serial" defaultSerial)),
+		     OnAction (Action "New BT") (always (quickDevice "bt_dev" defaultBT)),
+		     OnAction (Action "New POSIX") (always (quickDevice "posix_dev" defaultTCP)),
+		     OnAction (Action "New simulator") (always (quickDevice "sim_dev" defaultSimulator)),
+		     OnAction (Action "New serial") (always (quickDevice "serial_dev" defaultSerial)),
 		     OnAction (Action "Send task") (hasValue sendNewProgram),
 		     OnAction (Action "Edit device") (hasValue editUnit),
 		     OnAction (Action "Disconnect") (hasValue disconnectUnit)]
