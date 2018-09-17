@@ -152,17 +152,19 @@ sendNewProgram :: Unit -> Task ()
 sendNewProgram u = getSpec u
 	>>= \ds -> enterChoice "Choose Task" [ChooseFromList \p->p.Program.title] (programsBySpec ds)
 	>>= \pt -> pt.fill
-	>>= \pd -> enterTaskDetails
-	>>- \(i,m) -> sendProgramToUnit (pd,i,m) u
+	>>= \(ix,args) -> enterTaskDetails
+	>>- \(int,m)
+		# pi = {pIx = ix, pArgs = args, pInt = int, pMig = m}
+		= sendProgramToUnit pi u
 where
 	getSpec :: Unit -> Task (Maybe MTaskDeviceSpec)
 	getSpec u = get (unitData u) >>= \dd -> return dd.deviceSpec
 
 sendProgramToUnit :: ProgramInstance Unit -> Task ()
-sendProgramToUnit t=:((pid,as),int,m) u
-	# p = programs !! pid
-	= upd (\u -> {u & uTasks = [t:u.uTasks]}) (sdsFocus u.uId unitSh)
-		>| p.send u.uDev int (pid,as)
+sendProgramToUnit pi u
+	# p = programs !! pi.pIx
+	= upd (\u -> {u & uTasks = [pi:u.uTasks]}) (sdsFocus u.uId unitSh)
+		>| p.send u.uDev pi
 
 filterCompUnits :: Program [Unit] -> Task [Unit]
 filterCompUnits p us = allTasks (map (compatible p.req) us)
@@ -180,16 +182,16 @@ migrateTasks rid uid = traceValue ("Trying to migrate from devices with id " +++
 		(\_ -> traceValue "Can't migrate unit tasks" @! ())
 where
 	migrateTask :: Room Unit ProgramInstance -> Task ()
-	migrateTask _ _ (_,_,DoNotMigrate) = return ()
+	migrateTask _ _ {pMig = DoNotMigrate} = return ()
 	migrateTask (Room _ _ us) u t = migrate u t us
 	migrateTask _ u t = get allUnits >>= migrate u t
 	migrate :: Unit ProgramInstance [Unit] -> Task ()
 	migrate _ _ [] = throw "Cant migrate task. No other compatible units were found"
-	migrate u t=:(pd,_,_) us 
-		# p = programs!!(fst pd)
+	migrate u pi us 
+		# p = programs!!pi.pIx
 		= filterCompUnits p (filter ((/=)u) us)
 			>>= \us -> case us of
 				[] = throw "Cant migrate task. No other compatible units were found"
-				[u:_] = sendProgramToUnit t u
+				[u:_] = sendProgramToUnit pi u
 
 

@@ -4,17 +4,20 @@ import iTasks
 import Interpret
 import Requirements
 
-derive class iTask Program
+derive class iTask Program, ProgramInstance
 
 :: Program = { pId :: Int,
                title :: String,
                req ::  Main (Requirements () Stmt),
                fill :: Task ProgramData,
-               send :: MTaskDevice MTaskInterval ProgramData -> Task () }
+               send :: MTaskDevice ProgramInstance -> Task () }
 
 :: ProgramData :== (Int, [Dynamic])
 
-:: ProgramInstance :== (ProgramData, MTaskInterval, Migration)
+:: ProgramInstance = { pIx :: Int,
+                       pArgs :: [Dynamic],
+                       pInt :: MTaskInterval,
+                       pMig :: Migration }
 
 :: Migration = DoNotMigrate | SameRoom | AnyRoom
 

@@ -34,4 +34,6 @@ newTask = forever $ enterChoice "Choose Task" [ChooseFromList snd] programIndex
 	>>= filterCompUnits (programs !! ix)
 	>>= enterChoice "Choose unit" [ChooseFromList \u -> u.uName]
 	>>= \u -> (programs!!ix).fill
-	>>= \pd -> sendProgramToUnit (pd,int,m) u
+	>>= \(ix,args)
+		# p = {pIx = ix, pArgs = args, pInt = int, pMig = m}
+		= sendProgramToUnit p u

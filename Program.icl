@@ -20,7 +20,7 @@ import Peripheral.Servo
 
 class program v | arith, seq, boolExpr, noOp, vari, IF, dIO, aIO, dht22, hcsr04, pir, lightSensorDig, lightSensorAna, servo, sdspub, sds, assign, retrn, userLed v
 
-derive class iTask Program, Requirements
+derive class iTask Program, Requirements, ProgramInstance, Migration
 
 gDefault{|Dynamic|} = dynamic ()
 
@@ -198,111 +198,111 @@ fillThermostat :: Task ProgramData
 fillThermostat = updateInformation "Target temperature" [] 2100
 	>>= \goal -> return (0, [dynamic goal])
 
-sendThermostat :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendThermostat dev i (0, [dx:[]]) = withShared (fromDynamic dx) \goal -> liftmTask dev i (thermostat goal)
-sendThermostat _ _ _ = programDataError "thermostat"
+sendThermostat :: MTaskDevice ProgramInstance -> Task ()
+sendThermostat dev {pIx=0, pArgs=[dx:[]], pInt=i} = withShared (fromDynamic dx) \goal -> liftmTask dev i (thermostat goal)
+sendThermostat _ _ = programDataError "thermostat"
 
 fillSwitch :: Task ProgramData
 fillSwitch = updateInformation "Select switch pin" [] D10
 	>>= \p -> return(1, [dynamic p])
 
-sendSwitch :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendSwitch dev i (1,[dp:[]]) = liftmTask dev i (switch (fromDynamic dp))
-sendSwitch _ _ _ = programDataError "switch"
+sendSwitch :: MTaskDevice ProgramInstance -> Task ()
+sendSwitch dev {pIx=1, pArgs=[dp:[]], pInt=i} = liftmTask dev i (switch (fromDynamic dp))
+sendSwitch _ _ = programDataError "switch"
 
 fillCurtains :: Task ProgramData
 fillCurtains = updateInformation "Choose target brightness (0-100)" [] 50
 	>>= \b -> return (2,[dynamic b])
 
-sendCurtains :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendCurtains dev i (2,[b:[]]) = liftmTask dev i (curtains (fromDynamic b))
-sendCurtains _ _ _ = programDataError "curtains"
+sendCurtains :: MTaskDevice ProgramInstance -> Task ()
+sendCurtains dev {pIx=2, pArgs=[b:[]], pInt=i} = liftmTask dev i (curtains (fromDynamic b))
+sendCurtains _ _ = programDataError "curtains"
 
 fillMovSwitch :== return (3,[])
 
-sendMovSwitch :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendMovSwitch dev i (3,[]) = liftmTask dev i movSwitch
-sendMovSwitch _ _ _ = programDataError "movSwitch"
+sendMovSwitch :: MTaskDevice ProgramInstance -> Task ()
+sendMovSwitch dev pi=:{pIx=3, pArgs=[], pInt=i} = liftmTask dev i movSwitch
+sendMovSwitch _ _ = programDataError "movSwitch"
 
 fillFactorial :: Task ProgramData
 fillFactorial = updateInformation "Faculty of what" [] 4
 	>>= \x -> updateInformation "LED to light up" [] LED1
 	>>= \l -> return (4,[dynamic x, dynamic l])
 
-sendFactorial :: MTaskDevice MTaskInterval ProgramData-> Task ()
-sendFactorial dev i (4,[x,l:[]]) = withShared 1 \result -> liftmTask dev i (factorial result (fromDynamic x) (fromDynamic l))
-sendFactorial _ _ _ = programDataError "factorial"
+sendFactorial :: MTaskDevice ProgramInstance-> Task ()
+sendFactorial dev {pIx=4, pArgs=[x,l:[]], pInt=i} = withShared 1 \result -> liftmTask dev i (factorial result (fromDynamic x) (fromDynamic l))
+sendFactorial _ _ = programDataError "factorial"
 
 fillShareTemp :== return (5,[])
 
-sendShareTemp :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendShareTemp dev i (5,[]) = withShared 2100 \tsh -> liftmTask dev i (shareTemp tsh)
-sendShareTemp _ _ _ = programDataError "shareTemp"
+sendShareTemp :: MTaskDevice ProgramInstance -> Task ()
+sendShareTemp dev {pIx=5, pArgs=[], pInt=i} = withShared 2100 \tsh -> liftmTask dev i (shareTemp tsh)
+sendShareTemp _ _ = programDataError "shareTemp"
 
 fillShareHumi :== return (6,[])
 
-sendShareHumi :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendShareHumi dev i (6,[]) = withShared 5142 \hsh -> liftmTask dev i (shareHumid hsh)
-sendShareHumi _ _ _ = programDataError "shareHumi"
+sendShareHumi :: MTaskDevice ProgramInstance -> Task ()
+sendShareHumi dev {pIx=6, pArgs=[], pInt=i} = withShared 5142 \hsh -> liftmTask dev i (shareHumid hsh)
+sendShareHumi _ _ = programDataError "shareHumi"
 
 fillShareDist :== return (7,[])
 
-sendShareDist :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendShareDist dev i (7,[]) = withShared 42 \dsh -> liftmTask dev i (shareDistance dsh)
-sendShareDist _ _ _ = programDataError "shareDist"
+sendShareDist :: MTaskDevice ProgramInstance -> Task ()
+sendShareDist dev {pIx=7, pArgs=[], pInt=i} = withShared 42 \dsh -> liftmTask dev i (shareDistance dsh)
+sendShareDist _ _ = programDataError "shareDist"
 
 fillShareMov :== return (8,[])
 
-sendShareMov :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendShareMov dev i (8,[]) = withShared False \msh -> liftmTask dev i (shareMov msh)
-sendShareMov _ _ _ = programDataError "shareMov"
+sendShareMov :: MTaskDevice ProgramInstance -> Task ()
+sendShareMov dev {pIx=8, pArgs=[], pInt=i} = withShared False \msh -> liftmTask dev i (shareMov msh)
+sendShareMov _ _ = programDataError "shareMov"
 
 fillShareBrightDig :== return (9,[])
 
-sendShareBrightDig :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendShareBrightDig dev i (9,[]) = withShared False \bsh -> liftmTask dev i (shareBrightDig bsh)
-sendShareBrightDig _ _ _ = programDataError "shareBrightDig"
+sendShareBrightDig :: MTaskDevice ProgramInstance -> Task ()
+sendShareBrightDig dev {pIx=9, pArgs=[], pInt=i} = withShared False \bsh -> liftmTask dev i (shareBrightDig bsh)
+sendShareBrightDig _ _ = programDataError "shareBrightDig"
 
 fillShareBrightAna :== return (10,[])
 
-sendShareBrightAna :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendShareBrightAna dev i (10,[]) = withShared 0 \bsh -> liftmTask dev i (shareBrightAna bsh)
-sendShareBrightAna _ _ _ = programDataError "shareBrightAna"
+sendShareBrightAna :: MTaskDevice ProgramInstance -> Task ()
+sendShareBrightAna dev {pIx=10, pArgs=[], pInt=i} = withShared 0 \bsh -> liftmTask dev i (shareBrightAna bsh)
+sendShareBrightAna _ _ = programDataError "shareBrightAna"
 
 fillServoSwitch :== return (11,[])
 
-sendServoSwitch :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendServoSwitch dev i (11,[]) = liftmTask dev i servoSwitch
-sendServoSwitch _ _ _ = programDataError "servoSwitch"
+sendServoSwitch :: MTaskDevice ProgramInstance -> Task ()
+sendServoSwitch dev {pIx=11, pArgs=[], pInt=i} = liftmTask dev i servoSwitch
+sendServoSwitch _ _ = programDataError "servoSwitch"
 
 fillBlink :== return (12,[])
 
-sendBlink :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendBlink dev i (12,[]) = liftmTask dev i blink
-sendBlink _ _ _ = programDataError "blink"
+sendBlink :: MTaskDevice ProgramInstance -> Task ()
+sendBlink dev {pIx=12, pArgs=[], pInt=i} = liftmTask dev i blink
+sendBlink _ _ = programDataError "blink"
 
 fillButtonTest :== return (13,[])
 
-sendButtonTest :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendButtonTest dev i (13,[]) = liftmTask dev i buttonTest
-sendButtonTest _ _ _ = programDataError "buttonTest"
+sendButtonTest :: MTaskDevice ProgramInstance -> Task ()
+sendButtonTest dev {pIx=13, pArgs=[], pInt=i} = liftmTask dev i buttonTest
+sendButtonTest _ _ = programDataError "buttonTest"
 
 fillGarageDoor :: Task ProgramData
 fillGarageDoor = updateInformation "Minimal distance in cm" [] 300
 	>>= \d -> return (14, [dynamic d])
 
-sendGarageDoor :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendGarageDoor dev i (14,[dd:[]]) = liftmTask dev i (garageDoor (fromDynamic dd))
-sendGarageDoor _ _ _ = programDataError "garageDoor"
+sendGarageDoor :: MTaskDevice ProgramInstance -> Task ()
+sendGarageDoor dev {pIx=14, pArgs=[dd:[]], pInt=i} = liftmTask dev i (garageDoor (fromDynamic dd))
+sendGarageDoor _ _ = programDataError "garageDoor"
 
 fillControlWindows :: Task ProgramData
 fillControlWindows = updateInformation "Target temperature" [] 2100
 	>>= \t -> updateInformation "Temperature error" [] 500
 	>>= \e -> return (15, [dynamic t, dynamic e])
 
-sendControlWindows :: MTaskDevice MTaskInterval ProgramData -> Task ()
-sendControlWindows dev i (15,[dt,de:[]]) = liftmTask dev i (controlWindows (fromDynamic dt) (fromDynamic de))
-sendControlWindows _ _ _ = programDataError "controlWindows"
+sendControlWindows :: MTaskDevice ProgramInstance -> Task ()
+sendControlWindows dev {pIx=15, pArgs=[dt,de:[]], pInt=i} = liftmTask dev i (controlWindows (fromDynamic dt) (fromDynamic de))
+sendControlWindows _ _= programDataError "controlWindows"
 
 programsBySpec :: (Maybe MTaskDeviceSpec) -> [Program]
 programsBySpec Nothing = abort "Device doesnt have a Compatibility"
