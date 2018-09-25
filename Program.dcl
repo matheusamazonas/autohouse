@@ -21,6 +21,6 @@ derive class iTask Program, ProgramInstance
 
 :: Migration = DoNotMigrate | SameRoom | AnyRoom
 
-programsBySpec :: (Maybe MTaskDeviceSpec) -> [Program]
+programsBySpec :: MTaskDeviceSpec -> [Program]
 programs :: [Program]
 programIndex :: [(Int,String)]

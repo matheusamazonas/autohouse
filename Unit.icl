@@ -157,8 +157,11 @@ sendNewProgram u = getSpec u
 		# pi = {pIx = ix, pArgs = args, pInt = int, pMig = m}
 		= sendProgramToUnit pi u
 where
-	getSpec :: Unit -> Task (Maybe MTaskDeviceSpec)
-	getSpec u = get (unitData u) >>= \dd -> return dd.deviceSpec
+	getSpec :: Unit -> Task MTaskDeviceSpec
+	getSpec u = get (unitData u) 
+		>>= \dd -> case dd.deviceSpec of
+			Nothing = throw "Device does not have specs!"
+			Just ds = return ds
 
 sendProgramToUnit :: ProgramInstance Unit -> Task ()
 sendProgramToUnit pi u
@@ -172,7 +175,9 @@ filterCompUnits p us = allTasks (map (compatible p.req) us)
 where
 	compatible :: (Main (Requirements () Stmt)) Unit -> Task (Unit, Bool)
 	compatible r u = get (unitData u)
-		>>= \dd -> return (u, match r dd.deviceSpec)
+		>>= \dd -> case dd.deviceSpec of
+			Nothing = throw "Device does not have specs!"
+			Just ds = return (u, match r ds)
 
 migrateTasks :: RoomId UnitId -> Task ()
 migrateTasks rid uid = traceValue ("Trying to migrate from devices with id " +++ toString uid) 

@@ -304,8 +304,7 @@ sendControlWindows :: MTaskDevice ProgramInstance -> Task ()
 sendControlWindows dev {pIx=15, pArgs=[dt,de:[]], pInt=i} = liftmTask dev i (controlWindows (fromDynamic dt) (fromDynamic de))
 sendControlWindows _ _= programDataError "controlWindows"
 
-programsBySpec :: (Maybe MTaskDeviceSpec) -> [Program]
-programsBySpec Nothing = abort "Device doesnt have a Compatibility"
+programsBySpec :: MTaskDeviceSpec -> [Program]
 programsBySpec spec = filter (\p -> match p.req spec) programs
 
 programs :: [Program]
