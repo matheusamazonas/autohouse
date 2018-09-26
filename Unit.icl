@@ -182,9 +182,11 @@ where
 migrateTasks :: RoomId UnitId -> Task ()
 migrateTasks rid uid = traceValue ("Trying to migrate from devices with id " +++ toString uid) 
 	>| get (sdsFocus rid roomSh)
-	>>= \r -> catchAll 
-		(get (sdsFocus uid unitSh) >>= \u -> allTasks (map (migrateTask r u) u.uTasks) @! ())
+	>>= \r -> get (sdsFocus uid unitSh)
+	>>= \u -> catchAll 
+		(allTasks (map (migrateTask r u) u.uTasks) @! ())
 		(\_ -> traceValue "Can't migrate unit tasks" @! ())
+	>| deleteUnit u
 where
 	migrateTask :: Room Unit ProgramInstance -> Task ()
 	migrateTask _ _ {pMig = DoNotMigrate} = return ()
