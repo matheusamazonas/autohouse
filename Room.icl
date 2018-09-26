@@ -44,7 +44,8 @@ newRoom = enterInformation "Room name" []
 
 editRoom :: Room -> Task ()
 editRoom r=:(Room rid n ds) = enterChoice (Title n) [ChooseFromList \u->u.uName] ds
-		>>* [OnAction (Action "New device") (always (newUnit rid)),
+		>>* [OnAction (Action "Connect 5 BT") (always connect5BT),
+		     OnAction (Action "New device") (always (newUnit rid)),
 		     OnAction (Action "New BT") (always (quickDevice "bt_dev" defaultBT)),
 		     OnAction (Action "New POSIX") (always (quickDevice "posix_dev" defaultTCP)),
 		     OnAction (Action "New simulator") (always (quickDevice "sim_dev" defaultSimulator)),
@@ -55,3 +56,9 @@ editRoom r=:(Room rid n ds) = enterChoice (Title n) [ChooseFromList \u->u.uName]
 where
 	quickDevice :: String a -> Task () | channelSync, iTask a
 	quickDevice name d = addUnit rid name d
+	connect5BT :: Task ()
+	connect5BT = (quickDevice "bt01" defaultBT
+		-&&- quickDevice "bt02" {defaultBT & devicePath = "/dev/tty.HC-05-02-DevB"}
+		-&&- quickDevice "bt03" {defaultBT & devicePath = "/dev/tty.HC-05-03-DevB"}
+		-&&- quickDevice "bt04" {defaultBT & devicePath = "/dev/tty.HC-05-04-DevB"}
+		-&&- quickDevice "bt05" {defaultBT & devicePath = "/dev/tty.HC-05-05-DevB"}) @! ()
